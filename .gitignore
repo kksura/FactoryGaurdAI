@@ -26,15 +26,19 @@ htmlcov/
 *.key
 *.pfx
 *.p12
-secrets/
+/secrets/
 
-# Data, models, experiment artifacts (generated, reproducible)
-data/
+# Data, models, experiment artifacts (generated, reproducible).
+# NOTE: these are anchored to the repo root (leading slash). An earlier
+# unanchored `data/` here silently matched src/factoryguard/data/,
+# configs/data/, and pipelines/data/ too, excluding real source code from
+# git for the whole of Phase 2-3 until caught before the Phase 3 commit.
+/data/
 !sample_data/
-mlruns/
-mlartifacts/
-artifacts/
-models/*.bin
+/mlruns/
+/mlartifacts/
+/artifacts/
+/reports/
 *.ckpt
 *.onnx
 *.safetensors
@@ -61,5 +65,4 @@ models/*.bin
 *.swp
 
 # Reports that are regenerated
-reports/
-sbom/*.json
+/sbom/*.json

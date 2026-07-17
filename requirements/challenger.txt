@@ -1,0 +1,8 @@
+# Optional model challengers (ADR-0021). Installed AFTER torch.txt so the
+# CUDA torch wheel is not displaced (tabpfn's torch requirement is satisfied
+# by the already-installed cu130 build).
+# NOTE: tabpfn >=8 requires a one-time free license acceptance to download
+# weights: register at https://ux.priorlabs.ai, accept the license, and set
+# TABPFN_TOKEN in your .env. Without the token the challenger reports itself
+# unavailable and the platform runs on the HGB primary alone.
+tabpfn==8.1.0

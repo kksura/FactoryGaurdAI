@@ -1,0 +1,43 @@
+# Medium profile: GB10 training and benchmarking.
+profile: medium
+seed: 42
+date_range:
+  start: "2025-11-01"
+  end: "2026-05-31"
+world:
+  plants: 3
+  lines_per_plant: 3
+  crimp_machines_per_line: 3
+  operators_per_plant: 40
+  suppliers: 8
+  product_families: 4
+  products_per_family: 4
+  material_lots_per_component: 16
+production:
+  units: 30000
+  units_per_work_order: 60
+  target_defect_rate: 0.04
+timeseries:
+  crimp_force_points: 200
+  aux_points: 100
+  aux_channels: [motor_current, vibration, temperature, pressure]
+  sensor_dropout_rate: 0.01
+images:
+  per_unit_probability: 0.1
+  size: 160
+labels:
+  label_delay_days: 7
+  label_noise_rate: 0.01
+mechanisms:
+  # See small.yaml comment: tuned for multiple wear/maintenance cycles per
+  # tool across the full date range instead of a single terminal cycle.
+  tool_wear: {enabled: true, wear_per_cycle: 0.0068, strength: 2.2}
+  supplier_lot: {enabled: true, bad_lot_fraction: 0.1, strength: 2.5}
+  humidity: {enabled: true, threshold_pct: 70, strength: 1.8}
+  calibration_offset: {enabled: true, affected_machine_fraction: 0.15, strength: 2.0}
+  changeover: {enabled: true, first_pieces: 5, strength: 1.6}
+  sensor_drift: {enabled: true, drift_per_day: 0.002}
+  maintenance_effect: {enabled: true, relief: 0.8, halflife_days: 3}
+  revision_shift: {enabled: true, shifted_revision_fraction: 0.25, strength: 1.2}
+  night_shift_load: {enabled: true, strength: 1.3}
+  camera_misalignment: {enabled: true, window_fraction: 0.08, blur_sigma: 2.0}

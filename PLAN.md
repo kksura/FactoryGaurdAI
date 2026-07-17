@@ -42,16 +42,20 @@ Last update: 2026-07-17 (Phase 0)
 - [x] Dataset card + lineage.json + SHA-256 manifest per dataset
 - Note: mypy override (`ignore_errors`) scoped to the 4 pandas-heavy simulation modules — pandas-stubs false positives; behaviour covered by tests
 
-## Phase 3 — Baselines + evaluation (rev. per ADR-0018/0021, approved 2026-07-17)
-- [ ] Temporal + group-aware split framework with leakage tests
-- [ ] Rule-based baseline; majority/prior floor; logistic regression
-- [ ] HistGradientBoosting primary (binary + multiclass) + **TabPFN v2 challenger** (config-switched)
-- [ ] Statistical TS anomaly detector (robust z vs healthy envelope + shape features)
-- [ ] Tabular isolation forest + image embedding-distance anomaly (cold-start components, ADR-0019)
-- [ ] Vision baseline: **DINOv2-small frozen encoder + trained head** (k-NN probe eval mode)
-- [ ] Historical-frequency forecast baseline
-- [ ] Metrics suite (PR-AUC, ROC-AUC, MCC, recall@FPR, cost-weighted, per-class, calibration, forecast, retrieval)
-- [ ] Evaluation report generator incl. challenger comparison + cold-start section
+## Phase 3 — Baselines + evaluation ✅ (2026-07-17)
+- [x] Temporal + group-aware split framework (`evaluation/splits.py`) with 8 automated leakage tests (`tests/ml/test_splits.py`)
+- [x] Rule-based baseline; majority/prior floor; logistic regression
+- [x] HistGradientBoosting primary (binary + multiclass) + **TabPFN v2 challenger** (config-switched, explicit precondition gates: deps/rows/device/license token)
+- [x] Statistical TS anomaly detector (robust z vs healthy envelope + shape features)
+- [x] Tabular isolation forest + image embedding-distance anomaly + **image-quality scorer** (cold-start components, ADR-0019) — anomaly/quality scores rank-evaluated only, never reported as calibrated probabilities
+- [x] Vision baseline: **DINOv2-small frozen encoder + trained head** (linear + k-NN probe), weights checksum-verified against a pinned SHA-256 before use
+- [x] Historical-frequency forecast baseline
+- [x] Metrics suite: `classification_metrics`, `anomaly_metrics` (separate — a real conflation bug found and fixed), `multiclass_metrics`, calibration (ECE/reliability curve on the calib split), forecast
+- [x] Evaluation report generator: challenger comparison, cold-start section, per-severity recall, image-quality (Scenario C), fit latency + artifact sizes, known limitations
+- [x] Lightweight model artifact persistence: joblib + SHA-256 manifest + lineage (git commit, seed, feature version) — not full MLflow/registry (still Phase 6)
+- [x] Common model interfaces (`models/interfaces.py`: `ProbabilisticClassifier` / `AnomalyScorer` Protocols)
+- **Real bug found and fixed during this phase**: the data generator's tool-wear/maintenance design made `days_since_maintenance`/`tool_age_cycles` unbounded monotonic proxies for elapsed time, collapsing HGB's temporal-split ROC-AUC to chance (0.47-0.50) even though random-CV showed real signal (~0.55-0.57). Fixed via per-tool wear-rate variation, round-robin tool rotation, cycle-counter reset on replacement, and retuned wear_per_cycle across all profiles so multiple wear/maintenance cycles occur within the date range. Regression test added (`tests/ml/test_generalization.py`).
+- **Second bug found and fixed**: image-quality blur threshold was an uncalibrated guess (detected 0% of camera-degraded images); recalibrated empirically against real generated data (90% detection / 15% false-flag) with a regression test (`tests/unit/test_image_quality.py`).
 
 ## Phase 4 — Multimodal (rev. per ADR-0019/0020/0021)
 - [ ] TS embedding model (1D-CNN; **optional SSL masked-reconstruction pretraining**, config flag)
@@ -105,8 +109,8 @@ Last update: 2026-07-17 (Phase 0)
 | 1 | New developer can run local quick start | pending |
 | 2 | Synthetic datasets reproducible | pending |
 | 3 | tiny + medium profiles exist | pending |
-| 4 | Baseline + multimodal models train | pending |
-| 5 | Leakage-safe evaluation | pending |
+| 4 | Baseline + multimodal models train | Phase 3 baselines done; multimodal is Phase 4 |
+| 5 | Leakage-safe evaluation | done (Phase 3: temporal+group splits, 8 automated tests) |
 | 6 | API returns required contract | pending |
 | 7 | Missing modalities explicit | pending |
 | 8 | Calibration + abstention | pending |
@@ -114,8 +118,8 @@ Last update: 2026-07-17 (Phase 0)
 | 10 | Explanations generated | pending |
 | 11 | Non-privileged containers | pending |
 | 12 | Unit/integration/contract/security/e2e tests | pending |
-| 13 | MLflow experiments + artifacts | pending |
-| 14 | Artifact checksums + lineage | pending |
+| 13 | MLflow experiments + artifacts | pending (Phase 6) |
+| 14 | Artifact checksums + lineage | done (Phase 3 lightweight persistence); full MLflow lineage in Phase 6 |
 | 15 | Scans + SBOM integrated | pending |
 | 16 | No secrets in repo | pending |
 | 17 | Secure-by-default prod config | pending |

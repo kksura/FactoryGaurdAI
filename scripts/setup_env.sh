@@ -36,6 +36,9 @@ if ! pip install --quiet -r requirements/torch.txt --index-url https://download.
   fi
 fi
 
+echo "[setup] installing optional challengers (tabpfn)"
+pip install --quiet -r requirements/challenger.txt || echo "[setup] challenger install failed (optional — continuing)"
+
 echo "[setup] installing factoryguard (editable)"
 pip install --quiet -e .
 
