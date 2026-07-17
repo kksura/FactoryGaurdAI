@@ -1,7 +1,7 @@
 # PLAN — FactoryGuard AI
 
 Status legend: [ ] pending · [~] in progress · [x] done · [!] blocked/needs external environment
-Last update: 2026-07-17 (Phase 0)
+Last update: 2026-07-17 (Phase 4)
 
 ## Phase 0 — Discovery and design
 - [x] Environment inspected (OS, ARM64, Python, GPU, CUDA, Docker+GPU, git, no az) → `docs/environment-assessment.md`
@@ -57,17 +57,19 @@ Last update: 2026-07-17 (Phase 0)
 - **Real bug found and fixed during this phase**: the data generator's tool-wear/maintenance design made `days_since_maintenance`/`tool_age_cycles` unbounded monotonic proxies for elapsed time, collapsing HGB's temporal-split ROC-AUC to chance (0.47-0.50) even though random-CV showed real signal (~0.55-0.57). Fixed via per-tool wear-rate variation, round-robin tool rotation, cycle-counter reset on replacement, and retuned wear_per_cycle across all profiles so multiple wear/maintenance cycles occur within the date range. Regression test added (`tests/ml/test_generalization.py`).
 - **Second bug found and fixed**: image-quality blur threshold was an uncalibrated guess (detected 0% of camera-degraded images); recalibrated empirically against real generated data (90% detection / 15% false-flag) with a regression test (`tests/unit/test_image_quality.py`).
 
-## Phase 4 — Multimodal (rev. per ADR-0019/0020/0021)
-- [ ] TS embedding model (1D-CNN; **optional SSL masked-reconstruction pretraining**, config flag)
-- [ ] Vision embeddings (DINOv2) + Grad-CAM/attention attribution
-- [ ] Graph-derived features (neighbor defect rates, lot risk, centrality; temporal cutoffs)
-- [ ] Late fusion (calibrated per-modality + meta-classifier) with **modality-dropout training**
-- [ ] Embedding fusion (gated, modality masks; missing ≠ zero; modality dropout)
-- [ ] Serving modes: anomaly-only / blended / supervised (ADR-0019) reported in responses
-- [ ] Calibration (temperature/isotonic) + reliability diagrams + ECE/Brier
-- [ ] Uncertainty: **conformal prediction + Mahalanobis OOD** + abstention policy + curves
-- [ ] Root-cause ranking + evaluation vs ground truth (top-1/top-3, MRR, NDCG)
-- [ ] Similar-incident retrieval (in-process exact search — no vector DB, ADR-0021)
+## Phase 4 — Multimodal ✅ (2026-07-17, rev. per ADR-0019/0020/0021)
+- [x] TS embedding model (`models/timeseries/cnn_encoder.py`: 1D-CNN, mask-aware NaN handling, train-stat normalization, best-val-epoch selection D-029; **optional SSL masked-reconstruction pretraining** behind `ts_encoder.ssl_pretrain`, compared via `--compare-ssl`)
+- [x] Vision attribution (`models/vision/attribution.py`: CLS-attention + attention-rollout from frozen DINOv2, geometry-validated in `tests/ml/test_attribution.py`)
+- [x] Graph-derived features (`features/graph.py`: time-decayed EB-smoothed entity defect rates, support, centrality, supplier-lot risk via NetworkX edge resolution; strict cutoffs — exposure at `produced_at`, defect evidence at `labeled_at`, both strictly-before; all features bounded [0,1] by construction, D-024 class guarded by tests)
+- [x] Late fusion (`models/fusion/late.py`: calibrated scores + availability mask + uncertainty proxy → logistic meta on the val split, **modality-dropout training augmentation**)
+- [x] Embedding fusion (`models/fusion/embedding.py`: gated projection, learned absent embeddings — missing ≠ zero — modality dropout; challenger per ADR-0006)
+- [x] Serving modes anomaly-only / blended / supervised (`inference/serving.py`, fixed documented anomaly-combination rule, mode stamped on every result; graph-prior cold-start signal `features/graph.graph_prior_scores` delivered as promised)
+- [x] Calibration (`models/calibration/`: Platt (positive-slope, D-028) / isotonic selection rule + reliability curves; small: ECE 0.398→0.034 (tabular), fused Brier 0.049 at 5% prevalence)
+- [x] Uncertainty: **split conformal + Mahalanobis OOD** (`inference/uncertainty.py`), conformal on calib-B disjoint from calibrator calib-A; empirical coverage 0.87–0.88 vs 0.9 target; abstention policy with reasons + risk-coverage curves
+- [x] Root-cause ranking (`explainability/root_cause.py`: entity candidates scored by decayed history + mechanism evidence) evaluated vs ground truth — medium: hit@3 0.36, hit@5 0.50, MRR 0.32 over 110 units
+- [x] Similar-incident retrieval (`inference/retrieval.py`, exact numpy search — no vector DB; indexes concatenated modality embeddings D-030; precision@5 above the category-frequency baseline on both profiles)
+- Pipeline: `python -m pipelines.training.train_multimodal --profile <p> [--compare-ssl] [--no-vision]` → `reports/evaluation/<p>/multimodal-{report.md,metrics.json}` + checksummed artifacts under `artifacts/multimodal/<p>/`; config in `configs/models/multimodal.yaml`
+- Honest findings: TS supervised head ≈ chance under temporal drift (SSL does not rescue it); anomaly-only combined score ≈ chance on test (image-distance is the only strong cold-start component, OI-7); fusion winner flips between profiles (small: embedding 0.64 > late 0.54; medium: late 0.60 > embedding 0.56) — late stays default per ADR-0006
 
 ## Phase 5 — Application (rev. per ADR-0020/0021)
 - [ ] Contracts (request/response/feedback/events) + JSON Schema versioning + compat tests
@@ -109,13 +111,13 @@ Last update: 2026-07-17 (Phase 0)
 | 1 | New developer can run local quick start | pending |
 | 2 | Synthetic datasets reproducible | pending |
 | 3 | tiny + medium profiles exist | pending |
-| 4 | Baseline + multimodal models train | Phase 3 baselines done; multimodal is Phase 4 |
+| 4 | Baseline + multimodal models train | done (Phase 3 baselines + Phase 4 fusion pipeline) |
 | 5 | Leakage-safe evaluation | done (Phase 3: temporal+group splits, 8 automated tests) |
 | 6 | API returns required contract | pending |
-| 7 | Missing modalities explicit | pending |
-| 8 | Calibration + abstention | pending |
-| 9 | Root-cause vs ground truth | pending |
-| 10 | Explanations generated | pending |
+| 7 | Missing modalities explicit | done in models (masks/NaN, missing≠zero, tested); API surfacing in Phase 5 |
+| 8 | Calibration + abstention | done (Platt/isotonic + conformal + Mahalanobis + policy + curves) |
+| 9 | Root-cause vs ground truth | done (Recall@K/MRR/NDCG@K vs generator truth in multimodal report) |
+| 10 | Explanations generated | partial (attention maps, modality contributions, similar incidents, abstention reasons; human-readable response assembly is Phase 5) |
 | 11 | Non-privileged containers | pending |
 | 12 | Unit/integration/contract/security/e2e tests | pending |
 | 13 | MLflow experiments + artifacts | pending (Phase 6) |

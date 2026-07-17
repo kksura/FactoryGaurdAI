@@ -159,3 +159,43 @@ def forecast_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]
 def interval_coverage(y_true: np.ndarray, lower: np.ndarray, upper: np.ndarray) -> float:
     y_true = np.asarray(y_true, dtype=float)
     return float(np.mean((y_true >= lower) & (y_true <= upper))) if len(y_true) else float("nan")
+
+
+def ranking_metrics(
+    ranked_ids: list[str], relevance: dict[str, float], ks: tuple[int, ...] = (1, 3, 5)
+) -> dict[str, float]:
+    """Single-query ranking metrics vs graded relevance (spec §9: root-cause
+    Recall@K, MRR, NDCG@K, top-1/top-3 accuracy vs synthetic ground truth).
+
+    ``relevance`` maps relevant ids to positive grades; ids absent from it
+    have grade 0. hit@k is 1.0 when any relevant id appears in the top k.
+    """
+    rel = {k: v for k, v in relevance.items() if v > 0}
+    out: dict[str, float] = {}
+    is_rel = [rid in rel for rid in ranked_ids]
+    first = next((i for i, r in enumerate(is_rel) if r), None)
+    out["mrr"] = 1.0 / (first + 1) if first is not None else 0.0
+    for k in ks:
+        top = ranked_ids[:k]
+        n_hit = sum(1 for rid in top if rid in rel)
+        out[f"recall_at_{k}"] = n_hit / len(rel) if rel else float("nan")
+        out[f"hit_at_{k}"] = 1.0 if n_hit > 0 else 0.0
+        gains = [rel.get(rid, 0.0) for rid in top]
+        ideal = sorted(rel.values(), reverse=True)[:k]
+        discounts = 1.0 / np.log2(np.arange(2, k + 2))
+        dcg = float(np.sum(np.asarray(gains) * discounts[: len(gains)]))
+        idcg = float(np.sum(np.asarray(ideal) * discounts[: len(ideal)]))
+        out[f"ndcg_at_{k}"] = dcg / idcg if idcg > 0 else float("nan")
+    return out
+
+
+def aggregate_rankings(per_query: list[dict[str, float]]) -> dict[str, float]:
+    """NaN-aware mean of per-query ranking metrics."""
+    if not per_query:
+        return {}
+    keys = per_query[0].keys()
+    return {
+        k: float(np.nanmean([q[k] for q in per_query]))
+        for k in keys
+        if all(k in q for q in per_query)
+    }

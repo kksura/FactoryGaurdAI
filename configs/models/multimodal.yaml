@@ -1,0 +1,41 @@
+# Phase 4 multimodal configuration (spec §17: thresholds/choices live in
+# config, never in code). Loaded and validated by
+# factoryguard.config.multimodal.load_multimodal_config.
+
+ts_encoder:
+  length: 128
+  embed_dim: 64
+  epochs: 15
+  ssl_pretrain: false   # optional masked-reconstruction pretraining (ADR-0021)
+  ssl_epochs: 10
+  batch_size: 256
+  lr: 0.001
+
+graph:
+  half_life_days: 7.0
+  smoothing: 25.0
+
+fusion:
+  modality_dropout: 0.3
+  dropout_copies: 2
+  proj_dim: 32
+  epochs: 60
+  lr: 0.003
+
+calibration:
+  min_isotonic_n: 200   # isotonic above this calibration-set size, else temperature
+
+uncertainty:
+  conformal_alpha: 0.1  # target 90% marginal coverage
+  ood_quantile: 0.995   # calibration-set quantile for the Mahalanobis flag
+  ood_shrinkage: 0.1
+
+serving:
+  mode: supervised       # anomaly-only | blended | supervised (ADR-0019)
+  blend_weight: 0.7
+
+retrieval:
+  k: 5
+
+root_cause:
+  half_life_days: 14.0   # slower decay: causes act on longer horizons than features
