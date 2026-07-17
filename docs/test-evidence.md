@@ -2,6 +2,14 @@
 
 Append-only log of test/verification runs actually executed on this machine. Each entry: date, command, result summary. Claims of success elsewhere in the docs must trace back to an entry here.
 
+## 2026-07-17 — Phase 2 synthetic data verification
+- `python -m pipelines.data.generate --profile tiny` → 240 units, 7.5% defect rate, 30,720 sensor rows, 125 images, 1,668 graph edges, 0.2 s.
+- `python -m pipelines.data.generate --profile small` → 2,500 units, 4.2% defect rate, 651 images, 1.76 s; ground-truth mechanisms present: supplier_lot(10), calibration_offset(6), tool_wear(5), revision_shift(3), changeover(1).
+- `python -m pipelines.data.validate --profile tiny|small` → PASSED, 0 quarantined.
+- `.venv/bin/pytest tests/unit` → **53 passed** (incl. determinism: two generations produce identical data manifests; validator catches injected unknown-FK/time-travel/schema/corrupt-PNG; hypothesis property tests on mechanisms).
+- ruff clean; mypy "no issues in 35 source files" (override for 4 simulation modules documented in pyproject).
+- Bug found & fixed during this phase: builtin `hash()` used for per-entity determinism is process-randomized → replaced with SHA-256-based `stable_hash` (would have silently broken reproducibility across runs).
+
 ## 2026-07-17 — Phase 1 foundation verification
 - `bash scripts/setup_env.sh` → venv built; `requirements/lock.txt` co-resolved (pip-compile) and installed. Two earlier resolution failures (cryptography 49 vs mlflow cap; pandas 3 vs mlflow `pandas<3`) fixed by capping in base.in and unifying the lock.
 - `pip install -r requirements/torch.txt --index-url .../whl/cu130` → torch 2.9.1+cu130 aarch64 installed on first attempt.

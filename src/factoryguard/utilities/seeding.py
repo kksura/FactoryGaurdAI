@@ -15,6 +15,14 @@ import numpy as np
 MAX_SEED = 2**32 - 1
 
 
+def stable_hash(*parts: str | int, mod: int | None = None) -> int:
+    """Process-independent deterministic hash (unlike builtin ``hash``,
+    which is randomized per interpreter for strings)."""
+    material = ":".join(map(str, parts)).encode()
+    value = int.from_bytes(hashlib.sha256(material).digest()[:8], "big")
+    return value % mod if mod else value
+
+
 def derive_seed(root_seed: int, *scope: str | int) -> int:
     """Derive a stable child seed from a root seed and a scope path.
 

@@ -30,21 +30,35 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def sha256_tree(root: Path, pattern: str = "**/*") -> dict[str, str]:
+def sha256_tree(
+    root: Path, pattern: str = "**/*", exclude: frozenset[str] | set[str] = frozenset()
+) -> dict[str, str]:
     """Checksums for every file under ``root``, keyed by POSIX relative path."""
     return {
-        p.relative_to(root).as_posix(): sha256_file(p)
+        rel: sha256_file(p)
         for p in sorted(root.glob(pattern))
-        if p.is_file()
+        if p.is_file() and (rel := p.relative_to(root).as_posix()) not in exclude
     }
 
 
 def write_manifest(root: Path, manifest_path: Path) -> dict[str, str]:
-    """Write a checksum manifest for a directory tree and return it."""
-    manifest = sha256_tree(root)
+    """Write a checksum manifest for a directory tree and return it.
+
+    If ``manifest_path`` lies inside ``root`` it is excluded from hashing so
+    the manifest can live alongside the data it protects.
+    """
+    exclude = _self_exclusion(root, manifest_path)
+    manifest = sha256_tree(root, exclude=exclude)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return manifest
+
+
+def _self_exclusion(root: Path, manifest_path: Path) -> set[str]:
+    try:
+        return {manifest_path.resolve().relative_to(root.resolve()).as_posix()}
+    except ValueError:
+        return set()
 
 
 def verify_manifest(root: Path, manifest_path: Path) -> None:
@@ -52,7 +66,7 @@ def verify_manifest(root: Path, manifest_path: Path) -> None:
     if not manifest_path.is_file():
         raise IntegrityError(f"manifest not found: {manifest_path}")
     expected: dict[str, str] = json.loads(manifest_path.read_text())
-    actual = sha256_tree(root)
+    actual = sha256_tree(root, exclude=_self_exclusion(root, manifest_path))
     if set(expected) != set(actual):
         missing = sorted(set(expected) - set(actual))
         extra = sorted(set(actual) - set(expected))
