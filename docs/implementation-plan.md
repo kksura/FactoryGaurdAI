@@ -69,7 +69,10 @@ FactoryGuardAI/
 | DB | PostgreSQL 16 (container) | Azure Database for PostgreSQL Flexible | official arm64 image |
 | Object store | MinIO (container) / filesystem abstraction | ADLS Gen2 + Blob | official arm64 image |
 | Graph | NetworkX (+optional PyG off by default) | same | NetworkX pure Python |
-| Vision explain | Grad-CAM (own implementation) | same | OK |
+| Vision | DINOv2-small frozen encoder + trained head (ADR-0018) | same | torch/torchvision aarch64 OK |
+| Tabular challenger | TabPFN v2, config-switched (ADR-0021) | same | torch-based, verify at adoption |
+| Vision explain | Grad-CAM / attention attribution (own implementation) | same | OK |
+| Assistants (optional) | Template default; local SLM/VLM via on-box runtime (ADR-0020) | Foundry-hosted option | off by default |
 | Observability | OpenTelemetry SDK, Prometheus, Grafana | Azure Monitor + App Insights (OTel exporter) | arm64 images OK |
 | Dashboard | Streamlit | Container Apps | pure Python |
 | Quality/security tooling | ruff, mypy, pytest, hypothesis, bandit, pip-audit, detect-secrets, trivy (container), syft (container) | CI equivalents | trivy/syft publish arm64 binaries |

@@ -20,3 +20,10 @@ Chronological log of significant decisions. Architecture Decision Records with f
 | D-014 | 2026-07-17 | Local stack via Docker Compose: PostgreSQL 16, MinIO, MLflow, Prometheus, Grafana, API, dashboard, worker; Redis omitted until a demonstrated need | Working principle 5; Redis "only when justified" | — |
 | D-015 | 2026-07-17 | Repo-local git identity `FactoryGuard AI <factoryguard@localhost>` because no global identity configured; user can amend | Enables per-phase commits | — |
 | D-016 | 2026-07-17 | Dataframe validation: Pandera (ARM64 pure-Python) for dataframe schemas + Pydantic v2 for API/event payloads | Both install cleanly on aarch64 | ADR-0006 (data contracts) |
+| D-017 | 2026-07-17 | **Architecture review (user-approved, all 3 tiers).** Vision → DINOv2-small encoder + trained head; VLM rejected as primary scorer | Better embeddings/few-shot; keeps calibration, Grad-CAM, ms latency | ADR-0018 |
+| D-018 | 2026-07-17 | Unsupervised-first serving modes: anomaly-only → blended → supervised, with cold-start evaluation | Platform useful before labels exist; mirrors real deployments | ADR-0019 |
+| D-019 | 2026-07-17 | Local assistant layer: optional on-box SLM summarizer + VLM vision triage; display/triage only, validated outputs, off by default | On-prem generative assistance without decision authority | ADR-0020 |
+| D-020 | 2026-07-17 | TabPFN v2 tabular challenger; modality-dropout fusion training; optional SSL pretraining for TS encoder | Highest accuracy-per-effort additions at our data scale | ADR-0021 |
+| D-021 | 2026-07-17 | Removed from scope: local event-stream emulator, vector DB, feature store | Improvement by subtraction; smaller attack/ops surface | ADR-0021 |
+| D-022 | 2026-07-17 | Uncertainty/abstention confirmed: conformal prediction + Mahalanobis OOD; tabular primary confirmed: HistGradientBoosting | Distribution-free coverage, no extra training cost | ADR-0021 |
+| D-023 | 2026-07-17 | Specification v2 published (`docs/specification/factoryguard-spec-v2.md` + .docx) superseding the original prompt as the working spec | Single reviewed source of truth incl. amendments | — |

@@ -42,33 +42,38 @@ Last update: 2026-07-17 (Phase 0)
 - [x] Dataset card + lineage.json + SHA-256 manifest per dataset
 - Note: mypy override (`ignore_errors`) scoped to the 4 pandas-heavy simulation modules — pandas-stubs false positives; behaviour covered by tests
 
-## Phase 3 — Baselines + evaluation
+## Phase 3 — Baselines + evaluation (rev. per ADR-0018/0021, approved 2026-07-17)
 - [ ] Temporal + group-aware split framework with leakage tests
-- [ ] Rule-based baseline; logistic regression; HistGradientBoosting (binary + multiclass)
-- [ ] Statistical TS anomaly detector (robust z / spectral)
-- [ ] Lightweight CNN (transfer learning) vision baseline
+- [ ] Rule-based baseline; majority/prior floor; logistic regression
+- [ ] HistGradientBoosting primary (binary + multiclass) + **TabPFN v2 challenger** (config-switched)
+- [ ] Statistical TS anomaly detector (robust z vs healthy envelope + shape features)
+- [ ] Tabular isolation forest + image embedding-distance anomaly (cold-start components, ADR-0019)
+- [ ] Vision baseline: **DINOv2-small frozen encoder + trained head** (k-NN probe eval mode)
 - [ ] Historical-frequency forecast baseline
 - [ ] Metrics suite (PR-AUC, ROC-AUC, MCC, recall@FPR, cost-weighted, per-class, calibration, forecast, retrieval)
-- [ ] Evaluation report generator
+- [ ] Evaluation report generator incl. challenger comparison + cold-start section
 
-## Phase 4 — Multimodal
-- [ ] TS embedding model (1D-CNN/AE) + anomaly score
-- [ ] Vision embeddings + Grad-CAM
-- [ ] Graph-derived features (neighbor defect rates, lot risk, centrality)
-- [ ] Late fusion (calibrated per-modality + meta-classifier)
-- [ ] Embedding fusion (gated, modality masks; missing ≠ zero)
+## Phase 4 — Multimodal (rev. per ADR-0019/0020/0021)
+- [ ] TS embedding model (1D-CNN; **optional SSL masked-reconstruction pretraining**, config flag)
+- [ ] Vision embeddings (DINOv2) + Grad-CAM/attention attribution
+- [ ] Graph-derived features (neighbor defect rates, lot risk, centrality; temporal cutoffs)
+- [ ] Late fusion (calibrated per-modality + meta-classifier) with **modality-dropout training**
+- [ ] Embedding fusion (gated, modality masks; missing ≠ zero; modality dropout)
+- [ ] Serving modes: anomaly-only / blended / supervised (ADR-0019) reported in responses
 - [ ] Calibration (temperature/isotonic) + reliability diagrams + ECE/Brier
-- [ ] Uncertainty (ensemble or conformal) + abstention policy + curves
+- [ ] Uncertainty: **conformal prediction + Mahalanobis OOD** + abstention policy + curves
 - [ ] Root-cause ranking + evaluation vs ground truth (top-1/top-3, MRR, NDCG)
-- [ ] Similar-incident retrieval (embedding + graph neighborhood)
+- [ ] Similar-incident retrieval (in-process exact search — no vector DB, ADR-0021)
 
-## Phase 5 — Application
+## Phase 5 — Application (rev. per ADR-0020/0021)
 - [ ] Contracts (request/response/feedback/events) + JSON Schema versioning + compat tests
 - [ ] FastAPI: health/version/predictions/batch/feedback/models/monitoring/data-quality endpoints
 - [ ] Security middleware (auth, roles, size limits, content-type allow-list, rate limit, headers, safe errors, idempotency)
 - [ ] Recommendation engine (versioned policies, allow-listed taxonomy, approver roles, audit log)
-- [ ] Streamlit dashboard
+- [ ] Assistant layer (ADR-0020): TemplateSummarizer default; optional local SLM summarizer + local VLM triage behind config, validated outputs, advisory-marked
+- [ ] Streamlit dashboard (incl. serving-mode + assistant-output panels)
 - [ ] OpenAPI validation test; e2e test
+- Removed: local event-stream emulator (ADR-0021) — ingestion stays batch+REST behind an interface
 
 ## Phase 6 — MLOps + observability
 - [ ] MLflow tracking integration (commit, seeds, checksums, signatures, cards)
