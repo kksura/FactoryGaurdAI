@@ -1,0 +1,7 @@
+# PyTorch is pinned separately because the CUDA aarch64 build comes from the
+# PyTorch index, not PyPI. Installed by `make setup` as:
+#   pip install -r requirements/torch.txt --index-url https://download.pytorch.org/whl/cu130
+# Fallback order (see docs/adr/ADR-0002): cu130 -> cu129 -> CPU wheel from PyPI.
+# GPU availability is verified by `make doctor`, never assumed.
+torch==2.9.1
+torchvision==0.24.1

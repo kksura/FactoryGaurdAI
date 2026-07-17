@@ -1,0 +1,16 @@
+# Unit/CI test environment: hermetic, filesystem-backed, deterministic.
+api:
+  debug: false
+auth:
+  enabled: true
+  provider: local-jwt
+  local_jwt_secret: test-only-jwt-secret-not-for-real-use
+storage:
+  backend: filesystem
+  root_path: data/test
+mlflow:
+  tracking_uri: "file:./mlruns-test"
+monitoring:
+  log_level: WARNING
+  log_format: json
+  metrics_enabled: false

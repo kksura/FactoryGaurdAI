@@ -1,0 +1,26 @@
+# Production template (Azure). Values here are structural; secrets and
+# endpoints come from Key Vault / managed identity at deploy time via
+# FG_* environment variables. Startup FAILS if any hardened check is violated
+# (see src/factoryguard/config/settings.py::_fail_closed).
+api:
+  host: 0.0.0.0        # container ingress is private (Container Apps internal)
+  debug: false
+  docs_enabled: false
+  cors_allowed_origins: []
+auth:
+  enabled: true
+  provider: entra-id
+  issuer: https://login.microsoftonline.com/<tenant-id>/v2.0
+  audience: api://factoryguard
+storage:
+  backend: azure-blob
+  public_access: false
+database:
+  sslmode: require
+model:
+  serving_alias: champion
+  require_approval: true
+  verify_checksums: true
+monitoring:
+  log_level: INFO
+  log_format: json

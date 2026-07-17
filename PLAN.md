@@ -10,23 +10,24 @@ Last update: 2026-07-17 (Phase 0)
 - [x] `docs/decision-log.md` (running index; ADRs in `docs/adr/`)
 - [x] `docs/risk-register.md`
 - [x] Git init, repo-local identity
-- [~] `.gitignore`, `.dockerignore`, `.editorconfig`, `.pre-commit-config.yaml`
-- [~] Repo skeleton directories
-- [ ] Architecture docs (`docs/architecture/*.md`) — seeded in Phase 0, completed by Phase 7
-- [ ] Threat model (`docs/security/threat-model.md`) — seeded Phase 0/1, completed Phase 8
-- [ ] Phase 0 commit + report
+- [x] `.gitignore`, `.dockerignore`, `.editorconfig`, `.pre-commit-config.yaml`
+- [x] Repo skeleton directories
+- [~] Architecture docs (`docs/architecture/*.md`) — local done; azure/security/data-flow/topology in Phase 7
+- [ ] Threat model (`docs/security/threat-model.md`) — Phase 8
+- [x] Phase 0 commit (789ff51)
 
 ## Phase 1 — Development foundation
-- [ ] `pyproject.toml` (project metadata, ruff/mypy/pytest config)
-- [ ] Pinned requirements (`requirements/*.txt` compiled lock, hashes where possible)
-- [ ] `src/factoryguard/config/` layered settings + production startup validation (fail-closed)
-- [ ] Structured JSON logging + secret redaction + correlation IDs
-- [ ] `Makefile` (setup, doctor, test, lint, …)
-- [ ] `scripts/doctor.py` (GPU/CUDA/deps health check)
-- [ ] Dockerfile (non-root, multi-stage, arm64) + `docker-compose.yml` (postgres, minio, mlflow, prometheus, grafana)
-- [ ] Pre-commit (ruff, mypy, detect-secrets, bandit)
-- [ ] `.github/workflows/pr.yml` baseline CI
-- [ ] Unit tests for config/logging/security utils; `make test` green
+- [x] `pyproject.toml` (project metadata, ruff/mypy/pytest/bandit config)
+- [x] Pinned requirements: unified `requirements/lock.txt` (pip-compile, co-resolved) + `torch.txt` (cu130 index)
+- [x] `src/factoryguard/config/` layered settings + fail-closed production validation (9 insecure combos tested)
+- [x] Structured JSON logging + secret redaction (key- and pattern-based) + correlation IDs
+- [x] `Makefile` (all spec §25 targets present; unimplemented pipeline modules fail loudly until their phase)
+- [x] `scripts/doctor.py` — verified: torch 2.9.1+cu130, **GPU matmul OK on GB10** (capability 12.1 warning noted, OI-1)
+- [x] Dockerfile (multi-stage, non-root uid 10001, healthcheck) + compose stack (postgres/minio/mlflow/prometheus/grafana/api, loopback-only, cap_drop ALL) — `docker compose config` validates
+- [x] Pre-commit config (ruff, detect-secrets, bandit, hygiene hooks) + `.secrets.baseline`
+- [x] `.github/workflows/pr.yml` (quality, supply-chain, container jobs) — YAML validated; **unexecuted** (no GitHub remote)
+- [x] 34 unit tests green; ruff clean; mypy clean (26 files); bandit: 2 low-severity accepted (fixed-argv subprocess in doctor)
+- [x] All 17 ADRs written (docs/adr/ADR-0001…0017)
 
 ## Phase 2 — Synthetic data
 - [ ] Entity model + ID scheme (plants→lines→machines→tools; products→connectors→terminals→wires; suppliers→lots; units→process steps)

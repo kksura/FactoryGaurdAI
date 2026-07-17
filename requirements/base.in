@@ -1,0 +1,21 @@
+# Core runtime dependencies (non-ML). Compiled to base.txt on linux/aarch64.
+pydantic>=2.7
+pydantic-settings>=2.3
+fastapi>=0.111
+uvicorn[standard]>=0.30
+httpx>=0.27
+python-multipart>=0.0.9
+PyJWT[crypto]>=2.8
+# capped because mlflow (ml.in) requires cryptography<49
+cryptography>=43,<49
+numpy>=1.26
+# capped <3 because mlflow (ml.in) requires pandas<3
+pandas>=2.2,<3
+pyarrow>=16
+pandera>=0.19
+networkx>=3.3
+scipy>=1.13
+pillow>=10.3
+prometheus-client>=0.20
+jsonschema>=4.22
+PyYAML>=6.0

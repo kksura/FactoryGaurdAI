@@ -1,0 +1,119 @@
+# Local full stack. All ports bind to 127.0.0.1 only (no public exposure).
+# Credentials come from .env (see .env.example) — compose fails fast if unset.
+# All services run unprivileged with no added capabilities.
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: factoryguard
+      POSTGRES_USER: factoryguard
+      POSTGRES_PASSWORD: ${FG_DATABASE__PASSWORD:?set in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U factoryguard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    <<: *hardening
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${FG_STORAGE__ACCESS_KEY:?set in .env}
+      MINIO_ROOT_PASSWORD: ${FG_STORAGE__SECRET_KEY:?set in .env}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: infrastructure/compose/mlflow.Dockerfile
+    command: >
+      mlflow server
+      --host 0.0.0.0 --port 5000
+      --backend-store-uri postgresql://factoryguard:${FG_DATABASE__PASSWORD}@postgres:5432/factoryguard
+      --artifacts-destination s3://mlflow/
+    environment:
+      AWS_ACCESS_KEY_ID: ${FG_STORAGE__ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${FG_STORAGE__SECRET_KEY}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+    ports:
+      - "127.0.0.1:5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  api:
+    <<: *hardening
+    build: .
+    read_only: true
+    tmpfs: [/tmp]
+    environment:
+      FG_ENVIRONMENT: local
+      FG_API__HOST: 0.0.0.0
+      FG_AUTH__LOCAL_JWT_SECRET: ${FG_AUTH__LOCAL_JWT_SECRET:?set in .env}
+      FG_DATABASE__HOST: postgres
+      FG_DATABASE__PASSWORD: ${FG_DATABASE__PASSWORD}
+      FG_STORAGE__BACKEND: s3
+      FG_STORAGE__ENDPOINT_URL: http://minio:9000
+      FG_STORAGE__ACCESS_KEY: ${FG_STORAGE__ACCESS_KEY}
+      FG_STORAGE__SECRET_KEY: ${FG_STORAGE__SECRET_KEY}
+      FG_MLFLOW__TRACKING_URI: http://mlflow:5000
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    <<: *hardening
+    image: prom/prometheus:latest
+    volumes:
+      - ./infrastructure/compose/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    <<: *hardening
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${FG_GRAFANA_ADMIN_PASSWORD:?set in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./infrastructure/compose/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  pgdata:
+  miniodata:
+  promdata:
+  grafanadata:

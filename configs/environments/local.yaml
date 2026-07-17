@@ -1,0 +1,19 @@
+# Local development on the GB10 workstation. Loopback binding, filesystem
+# storage, dev JWT auth (still enabled — auth is never off by default).
+api:
+  host: 127.0.0.1
+  port: 8000
+  debug: false
+  docs_enabled: true
+auth:
+  enabled: true
+  provider: local-jwt
+  local_jwt_secret: ""   # set FG_AUTH__LOCAL_JWT_SECRET in .env (see .env.example)
+storage:
+  backend: filesystem
+  root_path: data
+mlflow:
+  tracking_uri: http://127.0.0.1:5000
+monitoring:
+  log_level: INFO
+  log_format: console
