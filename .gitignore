@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.python-version
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+
+# Secrets and local env — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+secrets/
+
+# Data, models, experiment artifacts (generated, reproducible)
+data/
+!sample_data/
+mlruns/
+mlartifacts/
+artifacts/
+models/*.bin
+*.ckpt
+*.onnx
+*.safetensors
+*.pt
+*.pth
+
+# Local services state
+.minio/
+.postgres/
+*.db
+*.sqlite
+
+# IaC local state
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.example.tfvars
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Reports that are regenerated
+reports/
+sbom/*.json
