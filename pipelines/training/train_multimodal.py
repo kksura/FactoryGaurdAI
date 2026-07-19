@@ -413,6 +413,13 @@ def main() -> int:  # noqa: C901 - orchestration is long but linear
         action="store_true",
         help="also train the SSL-pretrained TS encoder and report the comparison",
     )
+    parser.add_argument("--no-mlflow", action="store_true", help="skip MLflow experiment tracking")
+    parser.add_argument(
+        "--mlflow-uri",
+        default="sqlite:///mlruns/mlflow.db",
+        help="MLflow tracking URI (default: local serverless sqlite; set to the "
+        "compose server, e.g. http://127.0.0.1:5000, to log there)",
+    )
     args = parser.parse_args()
 
     configure_logging(fmt="console")
@@ -852,6 +859,21 @@ def main() -> int:  # noqa: C901 - orchestration is long but linear
 
     out_dir = args.reports_root / "evaluation" / args.profile
     write_report(out_dir, args.profile, results)
+    if not args.no_mlflow:
+        try:
+            from factoryguard.mlops.tracking import log_training_run
+
+            run_id = log_training_run(
+                results,
+                lineage,
+                artifacts_dir=args.artifacts_root / args.profile,
+                report_dir=out_dir,
+                tracking_uri=args.mlflow_uri,
+                extra_params={"ssl_pretrain": cfg.ts_encoder.ssl_pretrain},
+            )
+            results["_meta"]["mlflow_run_id"] = run_id
+        except Exception as exc:  # tracking must never fail a training run
+            log.warning("mlflow tracking skipped: %s", str(exc)[:200])
     log.info(
         "multimodal done in %.1fs — late fusion test: %s",
         results["_meta"]["wall_time_s"],

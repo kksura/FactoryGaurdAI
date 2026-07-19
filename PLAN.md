@@ -1,7 +1,7 @@
 # PLAN — FactoryGuard AI
 
 Status legend: [ ] pending · [~] in progress · [x] done · [!] blocked/needs external environment
-Last update: 2026-07-19 (Phase 5)
+Last update: 2026-07-19 (Phase 6)
 
 ## Phase 0 — Discovery and design
 - [x] Environment inspected (OS, ARM64, Python, GPU, CUDA, Docker+GPU, git, no az) → `docs/environment-assessment.md`
@@ -82,13 +82,15 @@ Last update: 2026-07-19 (Phase 5)
 - [x] OpenAPI generated + validated in e2e; e2e suite: generate tiny → train → serve → predict (incl. idempotency replay, declared-missing modality, batch) → feedback → monitoring → audit verify
 - Removed: local event-stream emulator (ADR-0021) — ingestion stays batch+REST behind an interface
 
-## Phase 6 — MLOps + observability
-- [ ] MLflow tracking integration (commit, seeds, checksums, signatures, cards)
-- [ ] Registry abstraction: Candidate/Validated/Staging/Champion/Archived + promotion gates
-- [ ] OTel instrumentation; Prometheus metrics; Grafana dashboards
-- [ ] Drift suite (PSI, JS, KS, Wasserstein; embedding drift; calibration drift)
-- [ ] Retraining workflow (sustained breach → candidate → compare → approval → shadow/canary)
-- [ ] GB10 benchmark → `docs/performance/gb10-benchmark.md`
+## Phase 6 — MLOps + observability ✅ (2026-07-19)
+- [x] MLflow tracking (`mlops/tracking.py`, wired into `train_multimodal`, default local sqlite backend D-034): params/headline metrics/tags (git commit, manifest SHA-256), report + metrics + generated model card as artifacts; verified against BOTH the local store and the compose MLflow server (postgres-backed, MinIO artifacts)
+- [x] Registry (`mlops/registry.py`): CANDIDATE→VALIDATED→STAGING→CHAMPION→ARCHIVED with promotion gates from `configs/policies/promotion.yaml` (metric floors, manifest re-verification, approval role + champion comparison for CHAMPION), hash-chained audit; API serves the registry champion (`serving_alias: champion`); live-verified end-to-end incl. a real first champion
+- [x] Observability: Prometheus `/metrics` (request/latency/prediction/abstention/risk-score series, bounded label cardinality; documented anonymous exception), OTel tracing setup (console exporter locally; OTLP wiring is Phase 7), Grafana provisioning + FactoryGuard API dashboard JSON; **full loop live-verified**: host API scraped `up` by the containerized Prometheus
+- [x] Drift suite (`monitoring/drift.py`): PSI/JS/KS/Wasserstein + categorical PSI, embedding drift (reference-geometry Mahalanobis ratio + tail mass), calibration drift; thresholds in `configs/policies/drift.yaml`; report pipeline proves detection on injected shift AND surfaces real temporal drift (small: stat_ts component PSI 1.05 — the measured explanation for OI-7's weak cold-start components)
+- [x] OI-7 hook delivered: `drift_aware_weights` + weighted `combine_anomaly_scores` (config-gated, default stays the documented equal-weight rule); consumable-lot ids excluded from the breach rule (expected turnover ≠ drift, D-036)
+- [x] Retraining workflow (`pipelines/retraining/check_and_retrain.py`): breach rule → candidate training → registration → champion comparison → VALIDATED gate attempt → decision file; live-verified with the gates correctly REJECTING a weak tiny-profile candidate (ROC 0.39 < 0.52 floor); shadow/canary in `docs/operations/retraining-runbook.md`
+- [x] GB10 benchmark (`pipelines/benchmark/run_benchmark.py` → `docs/performance/gb10-benchmark.md`): GPU matmul ×25.4 vs CPU, DINOv2 1566 img/s, TS embed 317k units/s, service P50/P95/P99 = 43/56/57 ms — resolves OI-1 (GPU path solid) and OI-2 (ONNX stays optional)
+- [x] First real compose boot: postgres/minio/mlflow/prometheus/grafana healthy on loopback (found+fixed: `cap_drop: ALL` broke the postgres root→user drop — now runs as the postgres user, hardening intact, D-035); api container image build deferred (OI-9)
 
 ## Phase 7 — Azure (design + code, NOT executed here)
 - [ ] Bicep: RG, VNet/subnets, private DNS+endpoints, Key Vault, ADLS/Blob, ACR, Log Analytics, App Insights, AML workspace+compute+registry, managed identities, RBAC, PostgreSQL, Event Hubs (flag), Container Apps env, budgets, diagnostics, policy hooks
@@ -121,15 +123,15 @@ Last update: 2026-07-19 (Phase 5)
 | 10 | Explanations generated | done (evidence, root causes, similar incidents, abstention reasons, advisory template summary in every response) |
 | 11 | Non-privileged containers | pending |
 | 12 | Unit/integration/contract/security/e2e tests | mostly done (unit/ml/contract/security/e2e green; compose-stack integration + performance suites remain, Phase 6/8) |
-| 13 | MLflow experiments + artifacts | pending (Phase 6) |
-| 14 | Artifact checksums + lineage | done (Phase 3 lightweight persistence); full MLflow lineage in Phase 6 |
+| 13 | MLflow experiments + artifacts | done (local sqlite + compose server verified) |
+| 14 | Artifact checksums + lineage | done (manifest-verified bundles + registry + MLflow tags) |
 | 15 | Scans + SBOM integrated | pending |
 | 16 | No secrets in repo | pending |
 | 17 | Secure-by-default prod config | pending |
 | 18 | Azure infra plannable from code | pending |
 | 19 | Private networking + managed identity documented | pending |
-| 20 | Rollout + rollback procedure | pending |
-| 21 | Monitoring + drift reports | pending |
+| 20 | Rollout + rollback procedure | partial (registry promotion/rollback + runbook done; cloud canary is Phase 7 design) |
+| 21 | Monitoring + drift reports | done (Prometheus/Grafana loop live; drift reports with injected-shift validation) |
 | 22 | Threat model + RAI docs | pending |
 | 23 | No unexplained TODOs in critical paths | pending |
 | 24 | Unexecuted cloud ops identified | pending |

@@ -1,0 +1,12 @@
+# Registry promotion gates (spec §22; ADR-0005/0017). A candidate may only
+# advance when every gate for the target stage passes; Champion promotion
+# additionally requires a recorded human approval by the named role.
+validated:
+  min_test_roc_auc: 0.52        # must beat the prior/rule floor with margin
+  max_test_ece: 0.10            # calibrated probabilities or no promotion
+  min_conformal_coverage: 0.80  # empirical coverage may trail the 0.90 target
+staging:
+  require_manifest_verified: true
+champion:
+  required_approver_role: ml-engineer
+  require_champion_comparison: true   # candidate metrics vs current champion recorded

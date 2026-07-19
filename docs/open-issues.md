@@ -2,8 +2,8 @@
 
 | ID | Opened | Issue | Impact | Next action |
 |----|--------|-------|--------|------------|
-| OI-1 | 2026-07-17 | **Partially resolved.** torch 2.9.1+cu130 installed; GPU matmul works on GB10, but torch warns "cuda capability 12.1 … supported (8.0)-(12.0)" — kernels run via sm_120/PTX compatibility | Functional; watch for per-op failures or perf loss in Phase 6 benchmarks | Benchmark in Phase 6; if unstable, switch to NGC PyTorch container (ADR-0002 fallback) |
-| OI-2 | 2026-07-17 | onnxruntime GPU EP on aarch64/CUDA13 unverified | ONNX export path may be CPU-only locally | Test in Phase 6 benchmark; ONNX export remains optional |
+| OI-1 | 2026-07-17 | **Resolved 2026-07-19.** GB10 benchmark: GPU matmul ×25.4 vs CPU, DINOv2 1566 img/s, TS training/inference all on CUDA with zero per-op failures across Phases 3-6 | The capability-12.1 warning is cosmetic; PTX forward compat is fully functional | Closed (`docs/performance/gb10-benchmark.md`); NGC fallback never needed |
+| OI-2 | 2026-07-17 | **Resolved 2026-07-19 (by decision).** onnxruntime is not in the pinned environment; torch-native serving meets the latency budget (service P95 56 ms) by a wide margin | ONNX export stays optional and unexecuted | Closed; revisit only if a non-torch serving target appears (benchmark records the state) |
 | OI-3 | 2026-07-17 | No git global identity; using repo-local placeholder identity | Commit authorship is placeholder | User may set real identity and amend if desired |
 | OI-4 | 2026-07-17 | GitHub Actions CI cannot be executed from this environment (no remote configured) | CI workflows are written and lint-checked but unverified on GitHub | Mark as unexecuted; user pushes to GitHub to activate |
 | OI-5 | 2026-07-17 | TabPFN challenger requires a free `TABPFN_TOKEN` license token (interactive browser acceptance) not available in this environment | Challenger reports itself unavailable with a clear reason; HGB primary is unaffected | User can set `TABPFN_TOKEN` in `.env` after accepting the license at https://ux.priorlabs.ai to enable the challenger comparison |
@@ -12,6 +12,8 @@
 | OI-7 | 2026-07-17 | `anomaly-only` cold-start combined score ≈ chance on the small/medium test periods (ROC 0.43/0.49): under sensor-drift the stat-TS, TS-reconstruction and graph-prior components all degrade; image-distance is the only strong component (ROC 0.81) but covers only units with images | Cold-start mode is transparent about per-component quality in the report; the fixed equal-weight rule (ADR-0019) is honest but not robust to a weak component | Revisit the combination rule alongside Phase 6 drift detection (drift-aware down-weighting is the natural fix) |
 
 | OI-8 | 2026-07-19 | Serving state (prediction log, feedback, idempotency cache, rate-limit windows) is in-memory + JSONL per process; the compose stack's PostgreSQL is not yet wired into the API | Fine for the single-process local deployment; restart loses the in-memory prediction index (JSONL log survives) | Wire PostgreSQL persistence alongside Phase 6 MLflow integration |
+
+| OI-9 | 2026-07-19 | The `api` container image (full torch cu130 env) has never been built — `make up` boots the infra services (postgres/minio/mlflow/prometheus/grafana, all healthy) with the API running on the host | Compose stack verified except the api/dashboard containers; the host-run API is scraped by the containerized Prometheus (dedicated scrape target) | Build the api image when a containerized deployment is actually needed (Phase 8 hardening or Azure); expect a long first build (multi-GB torch layers) |
 
 **Resolved this phase — recorded for the audit trail:**
 

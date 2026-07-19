@@ -27,6 +27,15 @@ def build() -> object:
     configure_logging(fmt=settings.monitoring.log_format)
     profile = os.environ.get("FG_SERVE_PROFILE", "small")
     artifacts = Path("artifacts/multimodal") / profile
+    if settings.model.serving_alias == "champion":
+        from factoryguard.mlops.registry import ModelRegistry
+
+        champion = ModelRegistry(Path("artifacts/registry")).champion_path()
+        if champion is not None:
+            artifacts = champion
+            log.info("serving registry champion from %s", artifacts)
+        else:
+            log.info("no registry champion yet; serving profile artifacts %s", artifacts)
     bundle = ArtifactBundle.load(artifacts, verify_checksums=settings.model.verify_checksums)
     service = PredictionService(
         bundle,

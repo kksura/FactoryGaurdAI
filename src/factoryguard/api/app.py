@@ -68,6 +68,19 @@ def create_app(
             allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
         )
 
+    if settings.monitoring.metrics_enabled:
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        from factoryguard.api.metrics import metrics_endpoint, metrics_middleware
+
+        app.add_middleware(BaseHTTPMiddleware, dispatch=metrics_middleware)
+        # Documented exception to the auth rule: aggregate counters only,
+        # loopback deployment; the Azure design fronts this via the gateway.
+        app.add_api_route("/metrics", lambda: metrics_endpoint(), methods=["GET"])
+    from factoryguard.utilities.tracing import setup_tracing
+
+    setup_tracing(settings.monitoring.otel_endpoint)
+
     app.include_router(health_router)
     app.include_router(api_router)
 

@@ -30,11 +30,27 @@ class ServingMode(StrEnum):
     SUPERVISED = "supervised"
 
 
-def combine_anomaly_scores(anomaly: pd.DataFrame) -> np.ndarray:
-    """Fixed documented rule: equally-weighted mean of whichever anomaly
-    scores are available per unit (NaN = that scorer missing). Units with
-    no scorer at all get NaN — the caller must abstain on them."""
-    return anomaly.mean(axis=1, skipna=True).to_numpy(dtype=float)
+def combine_anomaly_scores(
+    anomaly: pd.DataFrame, weights: dict[str, float] | None = None
+) -> np.ndarray:
+    """Documented combination rule: mean of whichever anomaly scores are
+    available per unit (NaN = that scorer missing). Units with no scorer at
+    all get NaN — the caller must abstain on them.
+
+    ``weights`` enables the drift-aware variant (OI-7): per-component
+    weights from the drift report (``drift_aware_weights``), renormalized
+    over the components available for each unit. Off by default —
+    ``serving.drift_aware_anomaly_weights`` config gates it; the baseline
+    remains the equal-weight mean (ADR-0019)."""
+    if not weights:
+        return anomaly.mean(axis=1, skipna=True).to_numpy(dtype=float)
+    w = np.array([float(weights.get(c, 0.0)) for c in anomaly.columns])
+    vals = anomaly.to_numpy(dtype=float)
+    mask = np.isfinite(vals)
+    wm = mask * w  # per-row weights over available components only
+    denom = wm.sum(axis=1)
+    num = np.nansum(vals * wm, axis=1)
+    return np.where(denom > 0, num / np.maximum(denom, 1e-12), np.nan)
 
 
 @dataclass
@@ -53,12 +69,13 @@ def serve(
     anomaly: pd.DataFrame,
     supervised_proba: np.ndarray | None = None,
     blend_weight: float = 0.7,
+    anomaly_weights: dict[str, float] | None = None,
 ) -> ServingScores:
     """Produce the mode-appropriate risk score (spec §8.5/§18: the serving
     mode and per-component evidence are part of every response)."""
     if not 0.0 <= blend_weight <= 1.0:
         raise ValueError("blend_weight must be in [0, 1]")
-    combined = combine_anomaly_scores(anomaly)
+    combined = combine_anomaly_scores(anomaly, weights=anomaly_weights)
     components = anomaly.copy()
 
     if mode is ServingMode.ANOMALY_ONLY:

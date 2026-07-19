@@ -7,6 +7,10 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["api:8000"]
+  - job_name: factoryguard-api-host
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:8010"]  # `make serve` on the host (8010: 8000 is often taken on the dev box)
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]

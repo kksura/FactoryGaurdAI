@@ -2,6 +2,18 @@
 
 Append-only log of test/verification runs actually executed on this machine. Each entry: date, command, result summary. Claims of success elsewhere in the docs must trace back to an entry here.
 
+## 2026-07-19 — Phase 6 MLOps + observability verification
+- `.venv/bin/pytest tests/unit tests/ml tests/contract tests/security tests/end_to_end` → **172 passed** (was 155; +17: drift metrics quiet-then-fires behaviour, registry lifecycle/gates/tamper-blocking/champion-archival, MLflow file-store logging, weighted anomaly combination, metrics endpoint hygiene).
+- ruff clean; mypy "no issues found in 76 source files"; bandit: the 4 pre-accepted LOWs only.
+- **MLflow verified twice**: local sqlite backend (run + headline metrics + model card asserted in tests) and the compose MLflow **server** (postgres backend, MinIO artifact store) — run `5d94e688…` holds metrics + 3 artifacts server-side.
+- **Registry live-verified**: small bundle registered → VALIDATED → STAGING → approved (ml-engineer) → CHAMPION with an 8-entry verified audit chain; API startup logs `serving registry champion from artifacts/multimodal/small`. Gates correctly rejected the weak tiny candidate (ROC 0.389 < 0.52 floor) in the retraining run.
+- **Drift reports** (small, with `--simulate-drift`): 11 real major-drift features (terminal_lot_id PSI 34.6 = expected consumable churn, excluded from the breach rule D-036; tool_age_cycles 7.9 = wear cycles), embedding tail mass 21.9% vs 1% expected, stat_ts component PSI 1.05 — the measured explanation for the weak cold-start components (OI-7). Injected synthetic shift flagged as major (detector-fires proof).
+- **Retraining workflow** (tiny, real breach): breach detected (16 major features + 95.2% embedding tail) → candidate trained → registered → compared → **rejected by gates** with the reason recorded in `reports/retraining/tiny/decision.json`. The governance path works; nothing auto-deploys.
+- **First real compose boot**: postgres (healthy, after the D-035 hardening fix), minio (healthy), mlflow server (200), prometheus (ready), grafana (200) — all loopback-bound. Full observability loop proven: host API on :8010 scraped `up` by the containerized Prometheus (`up{job="factoryguard-api-host"} = 1`); Grafana provisioning + dashboard JSON in `infrastructure/compose/grafana/`.
+- **GB10 benchmark** (`docs/performance/gb10-benchmark.md`): GPU matmul ×25.4 vs CPU; TS encoder fit 1.02 s (2000×2×128, 5 epochs), embed 317k units/s; DINOv2 1566 images/s; prediction service P50 42.6 ms / P95 56.4 ms / P99 56.7 ms. OI-1 closed (GPU path solid), OI-2 closed by decision (no onnxruntime pinned; torch-native serving is the path).
+- **Found and fixed during the phase**: MLflow 3.14 rejects the plain file store (→ sqlite default, D-034); `cap_drop: ALL` broke the postgres image's privilege drop on the first boot (→ `user: postgres`, D-035); port 8000 is occupied on the dev box by an unrelated service (host scrape target moved to 8010 — no foreign process touched).
+- Not executed: the api/dashboard container image builds (OI-9) and the OTLP trace exporter (not pinned; console exporter verified, collector wiring is Phase 7).
+
 ## 2026-07-19 — Phase 5 application verification
 - `.venv/bin/pytest tests/unit tests/ml tests/contract tests/security tests/end_to_end` → **155 passed** (was 104; +51: contract golden-schema compat, auth verifier incl. alg-none/wrong-aud/expired rejection, recommendation policies + audit-chain tamper detection, assistant validation/fallback, 12 API-security behaviours, 7-test HTTP e2e, dashboard AppTest).
 - ruff clean; mypy "no issues found in 70 source files"; bandit: only the 4 pre-accepted LOW subprocess findings (nothing new in the API/auth/service code).

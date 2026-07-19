@@ -12,6 +12,10 @@ services:
   postgres:
     <<: *hardening
     image: postgres:16-bookworm
+    # cap_drop ALL forbids the image's root→postgres privilege drop (setuid/
+    # chown at startup); running directly as the postgres user keeps the
+    # hardening and skips the drop. Found on the first real `make up` boot.
+    user: postgres
     environment:
       POSTGRES_DB: factoryguard
       POSTGRES_USER: factoryguard
@@ -91,6 +95,8 @@ services:
   prometheus:
     <<: *hardening
     image: prom/prometheus:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # scrape the host-run API (dev)
     volumes:
       - ./infrastructure/compose/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - promdata:/prometheus

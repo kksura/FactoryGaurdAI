@@ -1,0 +1,16 @@
+# Drift severity thresholds (spec §17/§21: thresholds live in config, not code).
+psi_moderate: 0.10
+psi_major: 0.25
+# Sustained-breach rule for the retraining trigger (pipelines/retraining):
+# a retraining candidate is proposed when at least `min_major_features`
+# features are major-drifted, or embedding tail mass exceeds
+# `embedding_tail_max`, or calibration ECE degrades by more than `ece_delta_max`.
+min_major_features: 3
+# Consumable-identity columns churn fully between windows by design (lots are
+# used up); their PSI is expected turnover, not model-relevant drift, so the
+# breach rule ignores them. They still appear in the report for transparency.
+breach_exclude_features:
+  - terminal_lot_id
+  - wire_lot_id
+embedding_tail_max: 0.05
+ece_delta_max: 0.05

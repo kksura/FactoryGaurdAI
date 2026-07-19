@@ -1,69 +1,79 @@
 # Handoff Note
 
-Updated 2026-07-19 at the end of the Phase 5 session.
+Updated 2026-07-19 at the end of the Phase 6 session.
 Read this first in a new session, then `PLAN.md` and `docs/implementation-status.md`.
 
 ## Current phase
 
-**Phases 0–5 complete and committed. Phase 6 (MLOps + observability) not yet started.**
+**Phases 0–6 complete and committed. Phase 7 (Azure design + IaC, unexecuted-by-design)
+not yet started.**
 
 ## What exists and works right now
 
-- `make setup && make doctor` → healthy venv, torch 2.9.1+cu130, GPU verified on GB10.
-- Data: `python -m pipelines.data.generate|validate --profile <p>`.
-- Training: `train_baselines` (Phase 3) and `train_multimodal` (Phase 4+5 serving
-  artifacts) — the multimodal run persists everything the API needs
-  (`serving_meta`, vision head, cold-start scorers, graph snapshot).
-- **API**: `make serve` (needs `FG_AUTH__LOCAL_JWT_SECRET` in `.env`, artifacts for
-  `FG_SERVE_PROFILE`, default small). Dev tokens: `python scripts/issue_dev_token.py
-  --roles quality-engineer`. Full surface: predictions (+batch, +idempotency),
-  feedback, models/card, monitoring, data-quality, approvals, audit verify.
-- **Dashboard**: `make dashboard` (Streamlit; reads reports + in-process demo predict).
+- Everything from Phases 0–5 (data, training, API, dashboard) plus:
+- **MLflow**: `train_multimodal` logs every run — local sqlite by default
+  (`sqlite:///mlruns/mlflow.db`, D-034), or `--mlflow-uri http://127.0.0.1:5000`
+  against the compose server (verified working, postgres + MinIO backed).
+- **Registry**: `factoryguard.mlops.registry.ModelRegistry`
+  (`artifacts/registry/`) — gated CANDIDATE→VALIDATED→STAGING→CHAMPION;
+  current champion: the small-profile bundle; the API serves it automatically.
+- **Observability**: `/metrics` (Prometheus), scraped live by the compose
+  Prometheus (`factoryguard-api-host` target, port **8010** on the host — 8000
+  is occupied by an unrelated service on this box); Grafana dashboard
+  provisioned (`FactoryGuard API`).
+- **Drift + retraining**: `python -m pipelines.monitoring.drift_report --profile <p>
+  [--simulate-drift]`, then `python -m pipelines.retraining.check_and_retrain
+  --profile <p> [--force]`; runbook in `docs/operations/retraining-runbook.md`.
+- **Benchmark**: `docs/performance/gb10-benchmark.md` (service P95 56 ms; OI-1/OI-2
+  closed).
+- **Compose infra stack is currently RUNNING** (postgres/minio/mlflow/prometheus/
+  grafana on loopback; `make down` to stop; `.env` holds the generated secrets).
 - `.venv/bin/pytest tests/unit tests/ml tests/contract tests/security tests/end_to_end`
-  → 155 tests green; ruff + mypy clean (70 files).
+  → 172 tests green; ruff + mypy clean (76 files).
 
-## Next task: Phase 6 — MLOps + observability
+## Next task: Phase 7 — Azure (design + code, NOT executed here)
 
-Per `PLAN.md`:
-- MLflow tracking integration (commit, seeds, checksums, signatures, cards)
-- Registry abstraction: Candidate/Validated/Staging/Champion/Archived + promotion gates
-- OTel instrumentation; Prometheus metrics; Grafana dashboards (compose stack exists,
-  never booted end-to-end — `make up` still unexercised)
-- Drift suite (PSI/JS/KS/Wasserstein, embedding drift, calibration drift) — note
-  OI-7: drift-aware down-weighting is the planned fix for the weak anomaly-only rule
-- Retraining workflow (breach → candidate → compare → approval → shadow/canary)
-- GB10 benchmark → `docs/performance/gb10-benchmark.md` (also settles OI-1/OI-2)
-- Consider wiring PostgreSQL persistence for serving state (OI-8)
+Per `PLAN.md` — everything is IaC/docs only (no credentials, ARM64 workstation):
+- Bicep: RG, VNet/subnets, private DNS + endpoints, Key Vault, ADLS/Blob, ACR,
+  Log Analytics, App Insights, AML workspace/compute/registry, managed identities,
+  RBAC, PostgreSQL, Event Hubs (flag), Container Apps env, budgets, diagnostics
+- AML job/environment/endpoint YAML; batch endpoint
+- Foundry integration doc; optional Fable 5 summarizer wiring (ADR-0015 rules)
+- Architecture docs + Mermaid diagrams; port/protocol + identity matrices
+- Deployment/rollback runbooks; teardown scripts
+- Mark actual deployment as blocked on subscription/credentials/cost approval
 
 ## Things NOT to re-litigate
 
-- Everything in the Phase 4 list (fusion default, conformal+Mahalanobis, Platt slope
-  constraint D-028, retrieval embedding D-030) still stands.
-- Contract v1 is additive-only: golden schemas in `tests/contract/golden/` are the
-  baseline; breaking changes require a `v2` module, never an edit to the goldens.
-- Serve-time graph features use the persisted pre-test entity-rate snapshot (D-032);
-  don't recompute decayed sums online.
-- Assistant constraints are structural (D-033): generators see only the response
-  object; validator + template fallback; `advisory` is a Literal[True].
-- Local-JWT is dev-only; hardened envs fail-closed to entra-id (already tested).
+- All Phase 4/5 decisions (D-028/D-030/D-032/D-033) still stand.
+- MLflow local = sqlite (D-034); plain file store raises in mlflow 3.14.
+- Registry gates are code we own (`configs/policies/promotion.yaml`); MLflow
+  tracks experiments, the registry tracks deployables — don't merge them.
+- Breach rule excludes consumable-lot ids (D-036) — their churn is expected.
+- `/metrics` anonymity is a documented, gated exception (D-037).
+- Drift-aware anomaly weights exist but default OFF (ADR-0019 baseline rule).
 
 ## Gotchas that still matter
 
-1. `.gitignore` anchoring for new top-level generated dirs (`git check-ignore -v`).
-2. Bounded time-features only (D-024); anomaly scores ≠ probabilities.
-3. Artifact dirs: lineage.json must stay covered by the manifest (D-031) — write
-   order in `persist_artifacts` is lineage → manifest.
-4. pandas rows: `row["shift"]` never `row.shift` (method collision).
-5. In-memory serving state is per-process (OI-8): rate limits, idempotency and the
-   prediction index reset on restart; JSONL logs under `artifacts/serving-logs/` survive.
-6. TabPFN needs `TABPFN_TOKEN` (OI-5); vision at serve time needs
-   `FG_ENABLE_VISION=1` and the DINOv2 checkpoint cache.
+1. Postgres container must keep `user: postgres` (D-035) — cap_drop ALL breaks
+   the image's own privilege drop otherwise.
+2. Port 8000 on this box belongs to another project — serve on 8010 for the
+   Prometheus host target; never kill the foreign listener.
+3. `pkill -f` with a pattern that appears in your own shell command kills the
+   shell (exit 144) — match on exact PIDs instead.
+4. Artifact write order stays lineage → manifest (D-031); `.gitignore` anchoring;
+   bounded time-features (D-024); `row["shift"]` not `row.shift`.
+5. api/dashboard container images are unbuilt (OI-9) — expect a very long first
+   build (torch layers) if attempted.
+6. OTLP exporter is not pinned: tracing works with the console exporter locally;
+   collector wiring belongs to Phase 7.
 
 ## Environment facts (verified, don't re-verify)
 
-- GB10, ARM64, CUDA 13.0, torch 2.9.1+cu130 (OI-1 capability warning benign).
-- No Azure CLI/credentials — Phase 7+ is IaC/docs only. EntraIdVerifier is written
-  but unexecuted locally. Repo-local git identity configured.
+- GB10, ARM64, CUDA 13.0, torch 2.9.1+cu130 — benchmarked ×25 GPU speedup (OI-1
+  closed). No Azure CLI/credentials — Phase 7 stays unexecuted-by-design.
+- `.env` exists with generated secrets (gitignored); FG_AUTH__LOCAL_JWT_SECRET
+  is set there for `make serve` and the token script.
 
 ## Working-memory files to update every phase
 

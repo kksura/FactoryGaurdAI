@@ -83,6 +83,9 @@ def create_prediction(
         result = _service(request).predict(body)
     except PredictionServiceError as exc:
         raise HTTPException(400, str(exc)) from exc
+    from factoryguard.api.metrics import record_prediction
+
+    record_prediction(result.serving_mode, result.abstained, result.risk_score)
     if idem_key:
         cache.put(f"{principal.subject}:{idem_key}", 200, result.model_dump_json().encode())
     return result

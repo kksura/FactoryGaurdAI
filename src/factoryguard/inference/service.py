@@ -247,6 +247,12 @@ class PredictionService:
     # --------------------------------------------------------------- predict
 
     def predict(self, req: PredictionRequest) -> PredictionResponse:
+        from factoryguard.utilities.tracing import span
+
+        with span("predict", unit_id=req.unit.unit_id):
+            return self._predict(req)
+
+    def _predict(self, req: PredictionRequest) -> PredictionResponse:
         t0 = time.perf_counter()
         models, meta = self.bundle.models, self.bundle.meta
         results: dict[str, _ModalityResult] = {}

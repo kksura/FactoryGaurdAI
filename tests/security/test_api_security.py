@@ -154,3 +154,12 @@ def test_docs_disabled_when_configured(tmp_path) -> None:  # type: ignore[no-unt
     client = TestClient(app, raise_server_exceptions=False)
     assert client.get("/docs").status_code == 404
     assert client.get("/openapi.json").status_code == 404
+
+
+def test_metrics_endpoint_exposes_aggregates_only(client: TestClient) -> None:
+    client.get("/health/live")  # generate at least one request metric
+    r = client.get("/metrics")
+    assert r.status_code == 200
+    assert "fg_http_requests_total" in r.text
+    # aggregate counters only — never unit ids or tokens
+    assert "UNIT-" not in r.text and "Bearer" not in r.text
