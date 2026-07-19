@@ -1,74 +1,69 @@
 # Handoff Note
 
-Updated 2026-07-17 at the end of the Phase 4 session.
+Updated 2026-07-19 at the end of the Phase 5 session.
 Read this first in a new session, then `PLAN.md` and `docs/implementation-status.md`.
 
 ## Current phase
 
-**Phases 0–4 complete and committed. Phase 5 (application layer) not yet started.**
+**Phases 0–5 complete and committed. Phase 6 (MLOps + observability) not yet started.**
 
 ## What exists and works right now
 
 - `make setup && make doctor` → healthy venv, torch 2.9.1+cu130, GPU verified on GB10.
-- `python -m pipelines.data.generate --profile <tiny|small|medium|large>` → synthetic dataset.
-- `python -m pipelines.data.validate --profile <profile>` → validation + quarantine report.
-- `python -m pipelines.training.train_baselines --profile <p>` → Phase 3 baselines + report.
-- `python -m pipelines.training.train_multimodal --profile <p> [--compare-ssl] [--no-vision]`
-  → Phase 4 multimodal system: graph features, TS CNN, vision, calibration, late+embedding
-  fusion, conformal+Mahalanobis abstention, serving modes, root-cause ranking, retrieval.
-  Writes `reports/evaluation/<p>/multimodal-{report.md,metrics.json}` and checksummed
-  artifacts to `artifacts/multimodal/<p>/`. Config: `configs/models/multimodal.yaml`.
-- `.venv/bin/pytest tests/unit tests/ml` → 104 tests green; ruff + mypy clean (59 files).
+- Data: `python -m pipelines.data.generate|validate --profile <p>`.
+- Training: `train_baselines` (Phase 3) and `train_multimodal` (Phase 4+5 serving
+  artifacts) — the multimodal run persists everything the API needs
+  (`serving_meta`, vision head, cold-start scorers, graph snapshot).
+- **API**: `make serve` (needs `FG_AUTH__LOCAL_JWT_SECRET` in `.env`, artifacts for
+  `FG_SERVE_PROFILE`, default small). Dev tokens: `python scripts/issue_dev_token.py
+  --roles quality-engineer`. Full surface: predictions (+batch, +idempotency),
+  feedback, models/card, monitoring, data-quality, approvals, audit verify.
+- **Dashboard**: `make dashboard` (Streamlit; reads reports + in-process demo predict).
+- `.venv/bin/pytest tests/unit tests/ml tests/contract tests/security tests/end_to_end`
+  → 155 tests green; ruff + mypy clean (70 files).
 
-## Next task: Phase 5 — Application (rev. per ADR-0020/0021)
+## Next task: Phase 6 — MLOps + observability
 
 Per `PLAN.md`:
-- Contracts (request/response/feedback/events) + JSON Schema versioning + compat tests
-- FastAPI app: health/version/predictions/batch/feedback/models/monitoring/data-quality
-- Security middleware (auth, roles, size limits, content-type allow-list, rate limit,
-  headers, safe errors, idempotency)
-- Recommendation engine (versioned policies, allow-listed taxonomy, approver roles, audit log)
-- Assistant layer (ADR-0020): TemplateSummarizer default; optional local SLM summarizer +
-  local VLM triage behind config, validated outputs, advisory-marked
-- Streamlit dashboard (incl. serving-mode + assistant-output panels)
-- OpenAPI validation test; e2e test
-- Removed scope (do not build): event-stream emulator (ADR-0021)
+- MLflow tracking integration (commit, seeds, checksums, signatures, cards)
+- Registry abstraction: Candidate/Validated/Staging/Champion/Archived + promotion gates
+- OTel instrumentation; Prometheus metrics; Grafana dashboards (compose stack exists,
+  never booted end-to-end — `make up` still unexercised)
+- Drift suite (PSI/JS/KS/Wasserstein, embedding drift, calibration drift) — note
+  OI-7: drift-aware down-weighting is the planned fix for the weak anomaly-only rule
+- Retraining workflow (breach → candidate → compare → approval → shadow/canary)
+- GB10 benchmark → `docs/performance/gb10-benchmark.md` (also settles OI-1/OI-2)
+- Consider wiring PostgreSQL persistence for serving state (OI-8)
 
-The Phase 4 artifacts under `artifacts/multimodal/<profile>/` are the models the API
-should load (joblib; torch-backed models rebuild from state_dict via their
-`__setstate__` — they were persisted on CPU and load without a GPU).
+## Things NOT to re-litigate
 
-## Things NOT to re-litigate (already decided and approved)
-
-- Late fusion is the default serving path; embedding fusion is the challenger
-  (ADR-0006). The winner flips between profiles (small: embedding, medium: late) —
-  that comparison lives in the report; the default stays late fusion.
-- Uncertainty: conformal + Mahalanobis (never ensembles/MC-dropout).
-- Calibration selection rule: isotonic ≥ `min_isotonic_n`, else Platt with the slope
-  constrained positive (D-028) — do not "simplify" back to temperature-only (bias bug)
-  or unconstrained Platt (rank-inversion bug). Both were hit and fixed this phase.
-- Retrieval indexes concatenated modality embeddings, not the fused space (D-030);
-  no vector DB (ADR-0021).
-- TS encoder keeps the best-val-AUC epoch (D-029); SSL pretraining exists behind
-  `ts_encoder.ssl_pretrain` and did NOT help (kept off by default, evidence recorded).
+- Everything in the Phase 4 list (fusion default, conformal+Mahalanobis, Platt slope
+  constraint D-028, retrieval embedding D-030) still stands.
+- Contract v1 is additive-only: golden schemas in `tests/contract/golden/` are the
+  baseline; breaking changes require a `v2` module, never an edit to the goldens.
+- Serve-time graph features use the persisted pre-test entity-rate snapshot (D-032);
+  don't recompute decayed sums online.
+- Assistant constraints are structural (D-033): generators see only the response
+  object; validator + template fallback; `advisory` is a Literal[True].
+- Local-JWT is dev-only; hardened envs fail-closed to entra-id (already tested).
 
 ## Gotchas that still matter
 
-1. **`.gitignore` anchoring**: new top-level generated-output dirs need a leading-slash
-   pattern; verify with `git check-ignore -v` (see OI-R1 for the original incident).
-2. **Bounded time-features only** (D-024): anything derived from elapsed time must decay
-   or reset. `tests/ml/test_multimodal.py::test_graph_features_bounded_and_ranges_overlap`
-   guards the graph features; extend the guard if new time-derived features appear.
-3. **Anomaly scores ≠ probabilities**: `anomaly_metrics` only, `AnomalyScorer` Protocol.
-4. **Conformal validity**: calibrators fit on calib-A, conformal/OOD thresholds on
-   calib-B (`split_calibration` in `train_multimodal.py`). Never merge them.
-5. **TabPFN needs `TABPFN_TOKEN`** (OI-5) — its unavailability is by design here.
+1. `.gitignore` anchoring for new top-level generated dirs (`git check-ignore -v`).
+2. Bounded time-features only (D-024); anomaly scores ≠ probabilities.
+3. Artifact dirs: lineage.json must stay covered by the manifest (D-031) — write
+   order in `persist_artifacts` is lineage → manifest.
+4. pandas rows: `row["shift"]` never `row.shift` (method collision).
+5. In-memory serving state is per-process (OI-8): rate limits, idempotency and the
+   prediction index reset on restart; JSONL logs under `artifacts/serving-logs/` survive.
+6. TabPFN needs `TABPFN_TOKEN` (OI-5); vision at serve time needs
+   `FG_ENABLE_VISION=1` and the DINOv2 checkpoint cache.
 
 ## Environment facts (verified, don't re-verify)
 
-- GB10, ARM64, CUDA 13.0, torch 2.9.1+cu130 (capability warning is OI-1, benign so far).
-- No Azure CLI/credentials — Phase 7+ is IaC/docs only. No git global identity —
-  repo-local identity configured.
+- GB10, ARM64, CUDA 13.0, torch 2.9.1+cu130 (OI-1 capability warning benign).
+- No Azure CLI/credentials — Phase 7+ is IaC/docs only. EntraIdVerifier is written
+  but unexecuted locally. Repo-local git identity configured.
 
 ## Working-memory files to update every phase
 

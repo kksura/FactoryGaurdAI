@@ -1,0 +1,460 @@
+{
+  "$defs": {
+    "AssistantOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "advisory": {
+          "const": true,
+          "default": true,
+          "title": "Advisory",
+          "type": "boolean"
+        },
+        "generator": {
+          "title": "Generator",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "generator"
+      ],
+      "title": "AssistantOutput",
+      "type": "object"
+    },
+    "EvidenceItem": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "source",
+        "description"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "Modality": {
+      "enum": [
+        "tabular",
+        "timeseries",
+        "vision",
+        "graph"
+      ],
+      "title": "Modality",
+      "type": "string"
+    },
+    "ModalityStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "available"
+      ],
+      "title": "ModalityStatus",
+      "type": "object"
+    },
+    "RecommendationModel": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "policy_id": {
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "recommendation_id": {
+          "title": "Recommendation Id",
+          "type": "string"
+        },
+        "required_approver_role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Required Approver Role"
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "AUTO_APPROVED",
+            "PENDING_APPROVAL"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recommendation_id",
+        "action",
+        "reason",
+        "evidence",
+        "policy_id",
+        "severity",
+        "status",
+        "expires_at"
+      ],
+      "title": "RecommendationModel",
+      "type": "object"
+    },
+    "RootCauseCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "entity_type": {
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "evidence": {
+          "title": "Evidence",
+          "type": "number"
+        },
+        "history": {
+          "title": "History",
+          "type": "number"
+        },
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "rank",
+        "entity_type",
+        "entity_id",
+        "score",
+        "history",
+        "evidence"
+      ],
+      "title": "RootCauseCandidate",
+      "type": "object"
+    },
+    "SimilarIncident": {
+      "additionalProperties": false,
+      "properties": {
+        "defect_category": {
+          "title": "Defect Category",
+          "type": "string"
+        },
+        "distance": {
+          "title": "Distance",
+          "type": "number"
+        },
+        "produced_at": {
+          "format": "date-time",
+          "title": "Produced At",
+          "type": "string"
+        },
+        "unit_id": {
+          "title": "Unit Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit_id",
+        "defect_category",
+        "produced_at",
+        "distance"
+      ],
+      "title": "SimilarIncident",
+      "type": "object"
+    },
+    "UncertaintyInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "ambiguous": {
+          "title": "Ambiguous",
+          "type": "boolean"
+        },
+        "conformal_alpha": {
+          "title": "Conformal Alpha",
+          "type": "number"
+        },
+        "conformal_set": {
+          "items": {
+            "enum": [
+              "ok",
+              "defect"
+            ],
+            "type": "string"
+          },
+          "title": "Conformal Set",
+          "type": "array"
+        },
+        "ood": {
+          "title": "Ood",
+          "type": "boolean"
+        },
+        "ood_distance": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ood Distance"
+        }
+      },
+      "required": [
+        "conformal_set",
+        "conformal_alpha",
+        "ambiguous",
+        "ood"
+      ],
+      "title": "UncertaintyInfo",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "abstained": {
+      "title": "Abstained",
+      "type": "boolean"
+    },
+    "abstention_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Abstention Reasons",
+      "type": "array"
+    },
+    "assistant": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AssistantOutput"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "category_probabilities": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Category Probabilities"
+    },
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "correlation_id": {
+      "title": "Correlation Id",
+      "type": "string"
+    },
+    "data_quality": {
+      "enum": [
+        "ok",
+        "degraded",
+        "failed"
+      ],
+      "title": "Data Quality",
+      "type": "string"
+    },
+    "defect_probability": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Defect Probability"
+    },
+    "feature_version": {
+      "title": "Feature Version",
+      "type": "string"
+    },
+    "is_probability": {
+      "title": "Is Probability",
+      "type": "boolean"
+    },
+    "modalities": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ModalityStatus"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/Modality"
+      },
+      "title": "Modalities",
+      "type": "object"
+    },
+    "model_version": {
+      "title": "Model Version",
+      "type": "string"
+    },
+    "prediction_id": {
+      "title": "Prediction Id",
+      "type": "string"
+    },
+    "processing_ms": {
+      "title": "Processing Ms",
+      "type": "number"
+    },
+    "recommendations": {
+      "items": {
+        "$ref": "#/$defs/RecommendationModel"
+      },
+      "title": "Recommendations",
+      "type": "array"
+    },
+    "risk_score": {
+      "title": "Risk Score",
+      "type": "number"
+    },
+    "root_causes": {
+      "items": {
+        "$ref": "#/$defs/RootCauseCandidate"
+      },
+      "title": "Root Causes",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "serving_mode": {
+      "enum": [
+        "anomaly-only",
+        "blended",
+        "supervised"
+      ],
+      "title": "Serving Mode",
+      "type": "string"
+    },
+    "similar_incidents": {
+      "items": {
+        "$ref": "#/$defs/SimilarIncident"
+      },
+      "title": "Similar Incidents",
+      "type": "array"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "top_evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceItem"
+      },
+      "title": "Top Evidence",
+      "type": "array"
+    },
+    "uncertainty": {
+      "$ref": "#/$defs/UncertaintyInfo"
+    }
+  },
+  "required": [
+    "prediction_id",
+    "correlation_id",
+    "model_version",
+    "feature_version",
+    "serving_mode",
+    "risk_score",
+    "is_probability",
+    "confidence",
+    "uncertainty",
+    "abstained",
+    "abstention_reasons",
+    "data_quality",
+    "modalities",
+    "top_evidence",
+    "root_causes",
+    "recommendations",
+    "similar_incidents",
+    "processing_ms",
+    "timestamp"
+  ],
+  "title": "PredictionResponse",
+  "type": "object"
+}

@@ -1,0 +1,64 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "defect_category": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Defect Category"
+    },
+    "failed_eol": {
+      "title": "Failed Eol",
+      "type": "boolean"
+    },
+    "notes": {
+      "default": "",
+      "maxLength": 2000,
+      "title": "Notes",
+      "type": "string"
+    },
+    "prediction_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Prediction Id",
+      "type": "string"
+    },
+    "severity": {
+      "anyOf": [
+        {
+          "enum": [
+            "minor",
+            "major",
+            "critical"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Severity"
+    },
+    "unit_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Unit Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "prediction_id",
+    "unit_id",
+    "failed_eol"
+  ],
+  "title": "FeedbackRequest",
+  "type": "object"
+}

@@ -72,12 +72,13 @@ def persist_artifacts(
     artifacts (review feedback, 2026-07-17).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
+    for stale in out_dir.glob("*.joblib"):
+        stale.unlink()  # a renamed model must not survive as an unverified orphan
     sizes: dict[str, int] = {}
     for name, model in fitted_models.items():
         path = out_dir / f"{name}.joblib"
         joblib.dump(model, path)
         sizes[name] = path.stat().st_size
-    manifest = write_manifest(out_dir, out_dir / "manifest.json")
     lineage = {
         "profile": profile_name,
         "seed": seed,
@@ -85,9 +86,13 @@ def persist_artifacts(
         "git_commit": _git_commit(),
         "created_at": datetime.now(UTC).isoformat(),
         "artifact_sizes_bytes": sizes,
-        "files": len(manifest),
     }
+    # lineage.json is written BEFORE the manifest so the manifest covers it —
+    # writing it after (the original order) left it as an unlisted extra file,
+    # which strict verify_manifest correctly rejects (found wiring Phase 5).
     (out_dir / "lineage.json").write_text(json.dumps(lineage, indent=2) + "\n")
+    manifest = write_manifest(out_dir, out_dir / "manifest.json")
+    lineage["files"] = len(manifest)
     return lineage
 
 

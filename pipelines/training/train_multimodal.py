@@ -626,6 +626,7 @@ def main() -> int:  # noqa: C901 - orchestration is long but linear
         dist = ImageDistanceAnomaly().fit(
             vis_extras["image_embeddings"][img_meta["split"].to_numpy() == "train"]
         )
+        vis_extras["image_distance"] = dist
         d_img = dist.anomaly_score(vis_extras["image_embeddings"])
         per_unit = (
             pd.DataFrame({"unit_id": img_meta["unit_id"].to_numpy(), "d": d_img})
@@ -763,8 +764,70 @@ def main() -> int:  # noqa: C901 - orchestration is long but linear
         if getattr(torch_model, "_model", None) is not None:
             torch_model._model = torch_model._model.cpu()
             torch_model.device = "cpu"
+    # Serving metadata (Phase 5): everything the API needs to score one unit
+    # without the training frames — feature dtypes (unseen categories map to
+    # NaN → HGB missing-handling), TS tensor config, retrieval z-stats, and
+    # an as-of-deployment graph entity-rate snapshot (pre-test rows only, so
+    # the persisted state never embeds test-period outcomes).
+    pre_test = splits.train | splits.val | splits.calib
+    graph_snapshot: dict[str, dict[str, list[float]]] = {}
+    gf_flat = graph.features.reset_index(drop=True)
+    ent_flat = graph.entities.reset_index(drop=True)
+    pre_idx = np.flatnonzero(pre_test)
+    for col in ent_flat.columns:
+        rate_col = f"g_{col}_defect_rate"
+        sup_col = f"g_{col}_support"
+        cen_col = f"g_{col}_centrality"
+        if rate_col not in gf_flat.columns:
+            continue
+        snap: dict[str, list[float]] = {}
+        ents = ent_flat[col].to_numpy()
+        for i in pre_idx:  # later rows overwrite → last pre-test state wins
+            snap[str(ents[i])] = [
+                float(gf_flat.at[i, rate_col]),
+                float(gf_flat.at[i, sup_col]),
+                float(gf_flat.at[i, cen_col]) if cen_col in gf_flat.columns else 0.0,
+            ]
+        graph_snapshot[col] = snap
+    num_cols = data.features.select_dtypes(include=[float]).columns.tolist()
+    num_block = data.features[num_cols].to_numpy(dtype=np.float64)
+    hgb_mc = HgbModel(seed=seed, multiclass=True).fit(
+        data.features[splits.train], data.y_category.to_numpy()[splits.train]
+    )
+    serving_meta = {
+        "profile": args.profile,
+        "feature_dtypes": {c: data.features[c].dtype for c in data.features.columns},
+        "numeric_columns": num_cols,
+        "ts_channels": tensor.channels,
+        "ts_length": cfg.ts_encoder.length,
+        "graph_snapshot": graph_snapshot,
+        "graph_global_rate": float(
+            gf_flat.loc[pre_idx, [c for c in gf_flat.columns if c.endswith("_defect_rate")]]
+            .to_numpy()
+            .mean()
+        ),
+        "graph_feature_columns": gf_flat.columns.tolist(),
+        "retrieval_stats": {
+            "tabular": (
+                num_block[splits.train].mean(axis=0),
+                num_block[splits.train].std(axis=0) + 1e-9,
+            ),
+            "timeseries": (
+                emb_ts[splits.train].mean(axis=0),
+                emb_ts[splits.train].std(axis=0) + 1e-9,
+            ),
+            "graph": (
+                emb_graph[splits.train].mean(axis=0),
+                emb_graph[splits.train].std(axis=0) + 1e-9,
+            ),
+        },
+        "conformal_alpha": cfg.uncertainty.conformal_alpha,
+        "blend_weight": cfg.serving.blend_weight,
+        "defect_categories": [str(c) for c in hgb_mc.classes_],
+    }
     fitted = {
         "hgb": hgb,
+        "hgb_multiclass": hgb_mc,
         "graph_logistic": graph_clf,
         "ts_cnn": ts_enc,
         "ts_cnn_coldstart": ts_cold,
@@ -775,7 +838,14 @@ def main() -> int:  # noqa: C901 - orchestration is long but linear
         "mahalanobis_ood": ood,
         "incident_index": index,
         "root_cause_ranker": ranker,
+        "isolation_forest": iso,
+        "stat_ts_detector": stat_det,
+        "serving_meta": serving_meta,
     }
+    if "head" in vis_extras:
+        fitted["vision_head"] = vis_extras["head"].head  # sklearn head only (no encoder ref)
+    if "image_distance" in vis_extras:
+        fitted["image_distance"] = vis_extras["image_distance"]
     lineage = persist_artifacts(fitted, args.artifacts_root / args.profile, args.profile, seed)
     results["_meta"]["artifact_files"] = lineage["files"]
     results["_meta"]["wall_time_s"] = round(time.perf_counter() - t0, 1)

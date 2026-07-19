@@ -1,0 +1,31 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "decision": {
+      "enum": [
+        "approve",
+        "reject"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "notes": {
+      "default": "",
+      "maxLength": 2000,
+      "title": "Notes",
+      "type": "string"
+    },
+    "recommendation_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Recommendation Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "recommendation_id",
+    "decision"
+  ],
+  "title": "ApprovalRequest",
+  "type": "object"
+}

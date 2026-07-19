@@ -44,6 +44,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "DTZ", "T20"]
+# B008: `Depends(...)` in parameter defaults is the FastAPI dependency idiom.
+"src/factoryguard/api/**" = ["B008"]
 "scripts/**" = ["T20"]
 "notebooks/**" = ["ALL"]
 

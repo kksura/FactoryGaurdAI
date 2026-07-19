@@ -2,6 +2,15 @@
 
 Append-only log of test/verification runs actually executed on this machine. Each entry: date, command, result summary. Claims of success elsewhere in the docs must trace back to an entry here.
 
+## 2026-07-19 — Phase 5 application verification
+- `.venv/bin/pytest tests/unit tests/ml tests/contract tests/security tests/end_to_end` → **155 passed** (was 104; +51: contract golden-schema compat, auth verifier incl. alg-none/wrong-aud/expired rejection, recommendation policies + audit-chain tamper detection, assistant validation/fallback, 12 API-security behaviours, 7-test HTTP e2e, dashboard AppTest).
+- ruff clean; mypy "no issues found in 70 source files"; bandit: only the 4 pre-accepted LOW subprocess findings (nothing new in the API/auth/service code).
+- **Live boot verified** (not just TestClient): `uvicorn apps.api.main:app` on GB10 → `/health/ready` 200; `/version` reports `multimodal-bf8efff4b8b3`; POST without token → 401; POST with a `scripts/issue_dev_token.py` token → full contract response (p=0.010, supervised mode, tabular/timeseries/graph available, vision correctly missing, root causes + similar incidents + advisory template summary). In-process prediction latency ~52 ms.
+- e2e suite generates a tiny dataset, trains the full multimodal pipeline, loads the checksummed bundle and exercises: prediction + idempotency replay (same prediction_id, `Idempotency-Replayed: true`), declared-missing modality echo, batch, feedback accept/reject validation, models/current + card, monitoring + data-quality summaries, approval RBAC (403 for plant-viewer), audit chain verify, OpenAPI path presence.
+- Security suite proves middleware order: 401/403 before any model code, 413 oversized body, 415 wrong content type, 429 rate limit, security headers + correlation ID on every response, validation errors return field paths only (input values never echoed), docs/openapi disabled when configured, 503 (not 500) when artifacts absent.
+- **Latent Phase 3 bug found and fixed (D-031)**: `persist_artifacts` wrote `lineage.json` after the SHA-256 manifest, so strict `verify_manifest` failed on every artifact directory (extra unlisted file). Undetected until Phase 5 actually verified artifacts at load time. Fixed (lineage now covered by the manifest; stale joblib files cleaned) and exercised by every ArtifactBundle.load in the e2e suite.
+- Also fixed while smoke-testing: `row.shift` attribute access in the dashboard collided with pandas' `.shift()` method — request builders must use `row["shift"]`.
+
 ## 2026-07-17 — Phase 4 multimodal verification
 - `.venv/bin/pytest tests/unit tests/ml` → **104 passed** (was 62; +42 Phase 4 tests: calibration, conformal/OOD/abstention, fusion contract + missing-modality behaviour, graph-feature decay math/cutoffs/label-latency/boundedness, serving modes, retrieval, ranking metrics, TS encoder on controlled waveforms, attribution geometry, real-data leakage checks, end-to-end tiny pipeline).
 - ruff clean (`check` + `format --check`); mypy "no issues found in 59 source files"; bandit: no new findings (the 2 pre-accepted LOW subprocess findings from Phase 1 remain the only ones).

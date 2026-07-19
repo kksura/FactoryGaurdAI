@@ -11,6 +11,8 @@
 
 | OI-7 | 2026-07-17 | `anomaly-only` cold-start combined score ≈ chance on the small/medium test periods (ROC 0.43/0.49): under sensor-drift the stat-TS, TS-reconstruction and graph-prior components all degrade; image-distance is the only strong component (ROC 0.81) but covers only units with images | Cold-start mode is transparent about per-component quality in the report; the fixed equal-weight rule (ADR-0019) is honest but not robust to a weak component | Revisit the combination rule alongside Phase 6 drift detection (drift-aware down-weighting is the natural fix) |
 
+| OI-8 | 2026-07-19 | Serving state (prediction log, feedback, idempotency cache, rate-limit windows) is in-memory + JSONL per process; the compose stack's PostgreSQL is not yet wired into the API | Fine for the single-process local deployment; restart loses the in-memory prediction index (JSONL log survives) | Wire PostgreSQL persistence alongside Phase 6 MLflow integration |
+
 **Resolved this phase — recorded for the audit trail:**
 
 | ID | Found | Issue | Impact | Resolution |

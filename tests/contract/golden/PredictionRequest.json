@@ -1,0 +1,289 @@
+{
+  "$defs": {
+    "Modality": {
+      "enum": [
+        "tabular",
+        "timeseries",
+        "vision",
+        "graph"
+      ],
+      "title": "Modality",
+      "type": "string"
+    },
+    "ProcessMeasurements": {
+      "additionalProperties": false,
+      "description": "Structured tabular features captured at production time.",
+      "properties": {
+        "ambient_temp_c": {
+          "title": "Ambient Temp C",
+          "type": "number"
+        },
+        "changeover_minutes": {
+          "title": "Changeover Minutes",
+          "type": "number"
+        },
+        "crimp_height_mm": {
+          "title": "Crimp Height Mm",
+          "type": "number"
+        },
+        "crimp_height_setpoint_mm": {
+          "title": "Crimp Height Setpoint Mm",
+          "type": "number"
+        },
+        "cycle_time_s": {
+          "title": "Cycle Time S",
+          "type": "number"
+        },
+        "days_since_maintenance": {
+          "title": "Days Since Maintenance",
+          "type": "number"
+        },
+        "humidity_pct": {
+          "title": "Humidity Pct",
+          "type": "number"
+        },
+        "production_rate_uph": {
+          "title": "Production Rate Uph",
+          "type": "number"
+        },
+        "pull_force_n": {
+          "title": "Pull Force N",
+          "type": "number"
+        },
+        "recent_defect_count_line": {
+          "title": "Recent Defect Count Line",
+          "type": "number"
+        },
+        "tool_age_cycles": {
+          "title": "Tool Age Cycles",
+          "type": "number"
+        },
+        "units_since_changeover": {
+          "title": "Units Since Changeover",
+          "type": "number"
+        }
+      },
+      "required": [
+        "cycle_time_s",
+        "production_rate_uph",
+        "crimp_height_setpoint_mm",
+        "crimp_height_mm",
+        "pull_force_n",
+        "ambient_temp_c",
+        "humidity_pct",
+        "tool_age_cycles",
+        "days_since_maintenance",
+        "changeover_minutes",
+        "units_since_changeover",
+        "recent_defect_count_line"
+      ],
+      "title": "ProcessMeasurements",
+      "type": "object"
+    },
+    "SensorSequences": {
+      "additionalProperties": false,
+      "description": "Raw sensor waveforms for the crimp cycle. ``null`` samples encode\nsensor dropout and are preserved (mask-aware model input).",
+      "properties": {
+        "channels": {
+          "additionalProperties": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "minProperties": 1,
+          "title": "Channels",
+          "type": "object"
+        }
+      },
+      "required": [
+        "channels"
+      ],
+      "title": "SensorSequences",
+      "type": "object"
+    },
+    "UnitContext": {
+      "additionalProperties": false,
+      "description": "Entity identifiers of the unit being scored (production context).",
+      "properties": {
+        "family": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Family",
+          "type": "string"
+        },
+        "line_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Line Id",
+          "type": "string"
+        },
+        "machine_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Machine Id",
+          "type": "string"
+        },
+        "operator_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Operator Id",
+          "type": "string"
+        },
+        "plant_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Plant Id",
+          "type": "string"
+        },
+        "produced_at": {
+          "format": "date-time",
+          "title": "Produced At",
+          "type": "string"
+        },
+        "product_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Product Id",
+          "type": "string"
+        },
+        "revision": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Revision",
+          "type": "string"
+        },
+        "seal_lot_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seal Lot Id"
+        },
+        "shift": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Shift",
+          "type": "string"
+        },
+        "terminal_lot_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Terminal Lot Id",
+          "type": "string"
+        },
+        "tool_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Tool Id",
+          "type": "string"
+        },
+        "unit_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Unit Id",
+          "type": "string"
+        },
+        "wire_lot_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Wire Lot Id",
+          "type": "string"
+        },
+        "work_order_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Work Order Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit_id",
+        "work_order_id",
+        "plant_id",
+        "line_id",
+        "machine_id",
+        "tool_id",
+        "operator_id",
+        "product_id",
+        "revision",
+        "family",
+        "shift",
+        "terminal_lot_id",
+        "wire_lot_id",
+        "produced_at"
+      ],
+      "title": "UnitContext",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "correlation_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Correlation Id"
+    },
+    "declared_missing": {
+      "description": "Modalities the caller declares absent (ADR-0006: missing is an explicit state, not an empty payload).",
+      "items": {
+        "$ref": "#/$defs/Modality"
+      },
+      "title": "Declared Missing",
+      "type": "array"
+    },
+    "image_refs": {
+      "description": "Storage-relative image paths; never absolute paths or URLs.",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Image Refs",
+      "type": "array"
+    },
+    "measurements": {
+      "$ref": "#/$defs/ProcessMeasurements"
+    },
+    "sensors": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SensorSequences"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "unit": {
+      "$ref": "#/$defs/UnitContext"
+    }
+  },
+  "required": [
+    "unit",
+    "measurements"
+  ],
+  "title": "PredictionRequest",
+  "type": "object"
+}

@@ -1,7 +1,7 @@
 # PLAN — FactoryGuard AI
 
 Status legend: [ ] pending · [~] in progress · [x] done · [!] blocked/needs external environment
-Last update: 2026-07-17 (Phase 4)
+Last update: 2026-07-19 (Phase 5)
 
 ## Phase 0 — Discovery and design
 - [x] Environment inspected (OS, ARM64, Python, GPU, CUDA, Docker+GPU, git, no az) → `docs/environment-assessment.md`
@@ -71,14 +71,15 @@ Last update: 2026-07-17 (Phase 4)
 - Pipeline: `python -m pipelines.training.train_multimodal --profile <p> [--compare-ssl] [--no-vision]` → `reports/evaluation/<p>/multimodal-{report.md,metrics.json}` + checksummed artifacts under `artifacts/multimodal/<p>/`; config in `configs/models/multimodal.yaml`
 - Honest findings: TS supervised head ≈ chance under temporal drift (SSL does not rescue it); anomaly-only combined score ≈ chance on test (image-distance is the only strong cold-start component, OI-7); fusion winner flips between profiles (small: embedding 0.64 > late 0.54; medium: late 0.60 > embedding 0.56) — late stays default per ADR-0006
 
-## Phase 5 — Application (rev. per ADR-0020/0021)
-- [ ] Contracts (request/response/feedback/events) + JSON Schema versioning + compat tests
-- [ ] FastAPI: health/version/predictions/batch/feedback/models/monitoring/data-quality endpoints
-- [ ] Security middleware (auth, roles, size limits, content-type allow-list, rate limit, headers, safe errors, idempotency)
-- [ ] Recommendation engine (versioned policies, allow-listed taxonomy, approver roles, audit log)
-- [ ] Assistant layer (ADR-0020): TemplateSummarizer default; optional local SLM summarizer + local VLM triage behind config, validated outputs, advisory-marked
-- [ ] Streamlit dashboard (incl. serving-mode + assistant-output panels)
-- [ ] OpenAPI validation test; e2e test
+## Phase 5 — Application ✅ (2026-07-19, rev. per ADR-0020/0021)
+- [x] Contracts (`contracts/v1.py`: prediction request/response incl. serving mode, modality availability, abstention reasons, evidence, root causes, recommendations, similar incidents, advisory assistant output; feedback; approval) + golden JSON Schemas + additive-only compat tests (`tests/contract/`)
+- [x] FastAPI (`api/`): health/version (anonymous) + predictions/batch/get, feedback, models/current + card, monitoring, data-quality, recommendation approval, audit verify — all deny-by-default scoped
+- [x] Security middleware: local-JWT auth (ADR-0010, `auth/` + `scripts/issue_dev_token.py`; EntraIdVerifier written for Phase 7, unexecuted locally), 7-role → scope model, body-size limit (413), content-type allow-list (415), fixed-window rate limit (429), security headers + correlation IDs on every response, safe uniform error shape (no stack traces, no echoed input values), Idempotency-Key replay on POST /predictions
+- [x] Recommendation engine (`recommendations/engine.py`: 8 deterministic policies POL-001..008 over the 9-action allow-listed taxonomy; hold_unit/escalate always PENDING_APPROVAL with required approver role) + append-only hash-chained audit log with tamper-detecting verify (`recommendations/audit.py`)
+- [x] Assistant layer (`assistants/`): deterministic TemplateSummarizer default; validator checks entities/action-taxonomy/probability-language with template fallback; optional SLM wrapper (structured-evidence-only input, falls back when runtime absent — ADR-0020); output contractually advisory (`advisory: Literal[True]`)
+- [x] Streamlit dashboard (`apps/dashboard/main.py`): model-health, uncertainty/abstention (risk–coverage chart), root-cause + retrieval panels, serving-mode indicator, in-process demo prediction with advisory-marked assistant output; AppTest smoke test
+- [x] Inference service (`inference/service.py`): manifest-verified artifact loading, single/batch predict reusing the full Phase 4 stack (calibrated fusion → conformal/OOD/abstention → serving modes → root cause → retrieval), serve-time graph entity-rate snapshot (pre-test state only), unseen categoricals → NaN → HGB missing-handling, feedback/monitoring/data-quality summaries; `make serve` boots and served a live authenticated prediction (52 ms in-process)
+- [x] OpenAPI generated + validated in e2e; e2e suite: generate tiny → train → serve → predict (incl. idempotency replay, declared-missing modality, batch) → feedback → monitoring → audit verify
 - Removed: local event-stream emulator (ADR-0021) — ingestion stays batch+REST behind an interface
 
 ## Phase 6 — MLOps + observability
@@ -113,13 +114,13 @@ Last update: 2026-07-17 (Phase 4)
 | 3 | tiny + medium profiles exist | pending |
 | 4 | Baseline + multimodal models train | done (Phase 3 baselines + Phase 4 fusion pipeline) |
 | 5 | Leakage-safe evaluation | done (Phase 3: temporal+group splits, 8 automated tests) |
-| 6 | API returns required contract | pending |
-| 7 | Missing modalities explicit | done in models (masks/NaN, missing≠zero, tested); API surfacing in Phase 5 |
+| 6 | API returns required contract | done (contract v1 + golden-schema compat tests + e2e validation) |
+| 7 | Missing modalities explicit | done end-to-end (declared_missing in requests, per-modality availability in responses, tested) |
 | 8 | Calibration + abstention | done (Platt/isotonic + conformal + Mahalanobis + policy + curves) |
 | 9 | Root-cause vs ground truth | done (Recall@K/MRR/NDCG@K vs generator truth in multimodal report) |
-| 10 | Explanations generated | partial (attention maps, modality contributions, similar incidents, abstention reasons; human-readable response assembly is Phase 5) |
+| 10 | Explanations generated | done (evidence, root causes, similar incidents, abstention reasons, advisory template summary in every response) |
 | 11 | Non-privileged containers | pending |
-| 12 | Unit/integration/contract/security/e2e tests | pending |
+| 12 | Unit/integration/contract/security/e2e tests | mostly done (unit/ml/contract/security/e2e green; compose-stack integration + performance suites remain, Phase 6/8) |
 | 13 | MLflow experiments + artifacts | pending (Phase 6) |
 | 14 | Artifact checksums + lineage | done (Phase 3 lightweight persistence); full MLflow lineage in Phase 6 |
 | 15 | Scans + SBOM integrated | pending |
