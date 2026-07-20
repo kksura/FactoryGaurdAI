@@ -1,0 +1,14 @@
+# AML environment for online/batch scoring deployments. Slimmer than the
+# training image (no data-generation extras); same pinned lock.
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+name: factoryguard-serve
+version: "0.1.0"
+description: >-
+  FactoryGuard scoring environment for managed endpoints: python 3.11, pinned
+  runtime dependencies, factoryguard source installed. Built by CI, pushed to
+  ACR, digest recorded in the release notes.
+image: <acr-login-server>/factoryguard/serve:0.1.0
+inference_config:
+  liveness_route: { path: /health/live, port: 8000 }
+  readiness_route: { path: /health/ready, port: 8000 }
+  scoring_route: { path: /score, port: 8000 }

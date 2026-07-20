@@ -1,0 +1,13 @@
+# AML environment for training jobs. A prebuilt image from our ACR — deps and
+# pretrained weights (DINOv2, pinned SHA-256) bake in at image build time
+# (spec §14), so training jobs need no internet egress inside the managed
+# network (aml.bicep sets AllowOnlyApprovedOutbound with no FQDN rules).
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+name: factoryguard-train
+version: "0.1.0"
+description: >-
+  FactoryGuard training environment: python 3.11, pinned requirements/lock.txt +
+  torch cu130, factoryguard source installed, DINOv2 weights checksum-verified
+  at build. Built by CI from the repo Dockerfile (train target) and pushed to
+  ACR; never built inside the workspace.
+image: <acr-login-server>/factoryguard/train:0.1.0

@@ -1,0 +1,29 @@
+# Default batch deployment: JSONL of PredictionRequest per line in, JSONL of
+# PredictionResponse rows out (append_row).
+$schema: https://azuremlschemas.azureedge.net/latest/modelBatchDeployment.schema.json
+name: default
+endpoint_name: fg-batch-scoring
+type: model
+
+model: azureml:factoryguard-multimodal@latest # release pipeline pins the exact version
+
+code_configuration:
+  code: ../scoring
+  scoring_script: score_batch.py
+
+environment: azureml:factoryguard-serve:0.1.0
+compute: azureml:cpu-cluster
+
+resources:
+  instance_count: 1
+
+settings:
+  max_concurrency_per_instance: 2
+  mini_batch_size: 16
+  output_action: append_row
+  output_file_name: predictions.jsonl
+  retry_settings:
+    max_retries: 2
+    timeout: 600
+  error_threshold: 0 # any failed file fails the run: silent partial scoring is worse than a loud stop
+  logging_level: info

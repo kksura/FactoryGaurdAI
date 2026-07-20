@@ -1,0 +1,38 @@
+# Multimodal training job — the cloud twin of `make train-multimodal`
+# (pipelines/training/train_multimodal.py, unchanged: the CLI's --data-root/
+# --artifacts-root/--reports-root map straight onto mounted inputs/outputs).
+# MLflow tracking goes to the workspace automatically; lineage tags (git
+# commit, dataset manifest SHA-256, seed) are set by the pipeline itself.
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+experiment_name: factoryguard-multimodal
+display_name: train-multimodal
+description: Train calibrated multimodal fusion + uncertainty + root-cause artifacts.
+
+compute: azureml:cpu-cluster # switch to azureml:gpu-cluster for medium/large profiles
+environment: azureml:factoryguard-train:0.1.0
+
+identity:
+  type: managed_identity # the training UAMI attached to the cluster (identity.bicep)
+
+inputs:
+  dataset:
+    type: uri_folder
+    path: azureml://datastores/datalake_curated/paths/datasets
+    mode: ro_mount
+  profile: small
+
+outputs:
+  artifacts:
+    type: uri_folder
+    mode: rw_mount
+  reports:
+    type: uri_folder
+    mode: rw_mount
+
+command: >-
+  python -m pipelines.training.train_multimodal
+  --profile ${{inputs.profile}}
+  --data-root ${{inputs.dataset}}
+  --artifacts-root ${{outputs.artifacts}}
+  --reports-root ${{outputs.reports}}

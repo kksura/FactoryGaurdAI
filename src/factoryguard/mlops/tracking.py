@@ -58,9 +58,7 @@ def log_training_run(
     import mlflow
 
     if tracking_uri.startswith("sqlite:///"):
-        Path(tracking_uri.removeprefix("sqlite:///")).parent.mkdir(
-            parents=True, exist_ok=True
-        )
+        Path(tracking_uri.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment)
     run_name = f"{lineage.get('profile')}-{lineage.get('git_commit', '')[:8]}"

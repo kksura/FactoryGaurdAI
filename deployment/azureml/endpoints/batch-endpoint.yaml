@@ -1,0 +1,6 @@
+# Batch endpoint: nightly / backfill scoring of curated datasets (mirrors the
+# local batch pipeline per ADR-0008).
+$schema: https://azuremlschemas.azureedge.net/latest/batchEndpoint.schema.json
+name: fg-batch-scoring
+description: FactoryGuard batch scoring over curated unit datasets.
+auth_mode: aad_token

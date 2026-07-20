@@ -1,0 +1,9 @@
+# Identity-based datastore over the ADLS Gen2 curated container. No account
+# keys or SAS anywhere: compute identities (training UAMI) get RBAC on the
+# account (rbac.bicep) and the workspace uses systemDatastoresAuthMode=identity.
+$schema: https://azuremlschemas.azureedge.net/latest/azureDataLakeGen2.schema.json
+name: datalake_curated
+type: azure_data_lake_gen2
+description: Curated synthetic datasets (Parquet + images + manifests) for training.
+account_name: <datalake-account>
+filesystem: curated

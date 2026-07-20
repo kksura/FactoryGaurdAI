@@ -1,0 +1,11 @@
+# Managed online endpoint for model scoring (ADR-0008: the application API in
+# Container Apps calls this via RemoteScorer). Entra token auth only — no
+# endpoint keys — and no public network access; traffic arrives through the
+# workspace private endpoint.
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
+name: fg-scoring
+description: FactoryGuard multimodal champion scoring endpoint.
+auth_mode: aad_token
+public_network_access: disabled
+identity:
+  type: system_assigned

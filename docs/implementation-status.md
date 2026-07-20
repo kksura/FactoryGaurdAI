@@ -8,6 +8,7 @@ job/endpoint YAML, architecture docs, runbooks — all unexecuted-by-design,
 no credentials in this environment).
 
 ## Completed
+- 2026-07-19: Phase 7 — Azure design + code, deliberately unexecuted: Bicep landing zone (16 files, `bicep build` 0 errors/0 warnings) implementing ADR-0009/0010/0011/0013/0014 — spoke VNet + NSGs, 9 private DNS zones + per-service private endpoints, Entra-only PostgreSQL/storage/ACR/Event Hubs (no shared credential exists in the design, D-039), AML workspace with approved-outbound-only managed network and zero FQDN rules (D-040), Container Apps env + 3 apps, UAMIs with GitHub OIDC federation, resource-scoped RBAC, policy guardrails, budgets + lock; partial Terraform equivalent (validate clean); AML YAML (train job reusing the local CLI, aad_token online endpoint + blue deployment, batch endpoint, scoring adapters over PredictionService with 5 unit tests); FoundrySummarizer (Fable 5, structured-evidence-only, template fallback, 5 unit tests, SDK unpinned OI-11); 4 architecture docs with Mermaid + port/identity matrices; deployment/rollback runbook + ADO equivalents + guarded deploy/teardown scripts. Validation boundary recorded as OI-10.
 - 2026-07-17: Phase 0 — environment assessment (GB10 ARM64, CUDA 13.0, Docker+GPU verified), planning docs, repo skeleton, git (commit 789ff51).
 - 2026-07-17: Phase 1 — pinned venv (unified lock + torch 2.9.1+cu130, GPU verified), layered fail-closed config, JSON logging with redaction, checksum/manifest utils, Makefile + doctor, Dockerfile + compose stack (validated), pre-commit + secrets baseline, PR CI workflow (written, unexecuted), 17 ADRs.
 - 2026-07-17: Phase 2 — full synthetic data system: world model with latent truth separation, 10 causal mechanisms with entity-attributed ground truth, production simulation, sensor waveforms, procedural images, graph edges, 4 profiles, validation+quarantine+report, dataset cards, deterministic manifests.
@@ -18,7 +19,7 @@ no credentials in this environment).
 - 2026-07-17: Phase 3 — full baseline suite (rule/prior/logistic/HGB+TabPFN/stat-TS/isolation-forest/DINOv2/forecast), leakage-safe temporal+group splits, evaluation report generator, lightweight checksummed artifact persistence. Two real bugs found and fixed during this phase (see decision log D-024/D-025): a generator design flaw that collapsed temporal-split generalization to chance, and an uncalibrated image-quality threshold that detected 0% of degraded images. Both have regression tests now.
 
 ## Verified test state
-- 172 tests green (unit/ml/contract/security/e2e); ruff + mypy clean (76 source files); bandit: only the 4 pre-accepted LOW findings. Compose infra stack boots healthy; MLflow server + Prometheus scrape live-verified; registry champion serves via the API. See docs/test-evidence.md.
+- 182 tests green (172 + 5 AML scoring-adapter + 5 Foundry-summarizer) (unit/ml/contract/security/e2e); ruff + mypy clean (76 source files); bandit: only the 4 pre-accepted LOW findings. Compose infra stack boots healthy; MLflow server + Prometheus scrape live-verified; registry champion serves via the API. See docs/test-evidence.md.
 
 ## Known failures / open issues
 - See `docs/open-issues.md`.

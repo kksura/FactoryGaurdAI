@@ -1,4 +1,5 @@
 from factoryguard.assistants.summarizer import (
+    FoundrySummarizer,
     SlmSummarizer,
     TemplateSummarizer,
     build_summarizer,
@@ -6,6 +7,7 @@ from factoryguard.assistants.summarizer import (
 )
 
 __all__ = [
+    "FoundrySummarizer",
     "SlmSummarizer",
     "TemplateSummarizer",
     "build_summarizer",

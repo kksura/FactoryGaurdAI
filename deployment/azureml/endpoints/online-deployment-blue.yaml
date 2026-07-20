@@ -1,0 +1,39 @@
+# 'blue' deployment behind fg-scoring. Safe rollout: deploy green alongside,
+# shift traffic 10 → 50 → 100 with gate checks between steps, keep blue for
+# instant rollback (docs/operations/azure-deployment-runbook.md §7).
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: blue
+endpoint_name: fg-scoring
+
+# The registered champion. The release pipeline resolves the exact version from
+# the registry promotion record — @latest is never deployed to prod.
+model: azureml:factoryguard-multimodal@latest
+
+code_configuration:
+  code: ../scoring
+  scoring_script: score.py
+
+environment: azureml:factoryguard-serve:0.1.0
+
+# Size from measurements: docs/performance/gb10-benchmark.md (service P95 56 ms
+# on CPU-class resources; GPU unnecessary for single-unit scoring).
+instance_type: <instance-type>
+instance_count: 1
+
+egress_public_network_access: disabled
+app_insights_enabled: true
+
+request_settings:
+  request_timeout_ms: 5000
+  max_concurrent_requests_per_instance: 4
+
+liveness_probe:
+  initial_delay: 30
+  period: 15
+readiness_probe:
+  initial_delay: 15
+  period: 10
+
+environment_variables:
+  FG_SERVING_MODE: supervised # anomaly-only | blended | supervised (ADR-0019)
+  FG_VERIFY_CHECKSUMS: "true"

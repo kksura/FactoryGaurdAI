@@ -2,6 +2,14 @@
 
 Append-only log of test/verification runs actually executed on this machine. Each entry: date, command, result summary. Claims of success elsewhere in the docs must trace back to an entry here.
 
+## 2026-07-19 — Phase 7 Azure design validation (local limit — no cloud execution)
+- Bicep CLI 0.45.15 (linux-arm64 release binary): `bicep build main.bicep` + `bicep build-params environments/{dev,prod}.bicepparam` → **exit 0, zero errors, zero warnings** (after fixing 5 initial warnings: ACR name min-length inference, `anonymousPullEnabled` API version, hardcoded login endpoint → `environment()`, documented `#disable-next-line BCP037` for the real-but-untyped `systemDatastoresAuthMode`, guarded conditional-module dereference).
+- Terraform 1.10.5 (linux-arm64): `terraform fmt -check` clean; `terraform init -backend=false` (azurerm ~>4.0 + random ~>3.6 providers downloaded); `terraform validate` → **"Success! The configuration is valid."** with zero warnings (two provider deprecations fixed: `local_authentication_disabled`, `enable_rbac_authorization`).
+- All 8 AML YAML files parse with `yaml.safe_load`.
+- `bash -n` clean on `scripts/azure/{deploy.sh,teardown.sh}` (shellcheck unavailable on this machine).
+- New unit tests: `tests/unit/test_azureml_scoring.py` (5: bundle discovery, fail-loud without manifest, run-before-init, init/run plumbing incl. FG_SERVING_MODE + checksum flag, batch JSONL scoring) and 5 Foundry-summarizer tests in `tests/unit/test_assistant.py` (SDK-absent fallback, invalid-output fallback, valid-output pass-through, structured-evidence field allow-list, builder wiring) — all green.
+- **NOT executed** (recorded as OI-10): `az deployment sub what-if`/`create`, `az ml *`, any resource creation, Foundry calls. No subscription, credentials, or az CLI on the GB10 — Phase 7 is design+code by design.
+
 ## 2026-07-19 — Phase 6 MLOps + observability verification
 - `.venv/bin/pytest tests/unit tests/ml tests/contract tests/security tests/end_to_end` → **172 passed** (was 155; +17: drift metrics quiet-then-fires behaviour, registry lifecycle/gates/tamper-blocking/champion-archival, MLflow file-store logging, weighted anomaly combination, metrics endpoint hygiene).
 - ruff clean; mypy "no issues found in 76 source files"; bandit: the 4 pre-accepted LOWs only.

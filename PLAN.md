@@ -1,7 +1,7 @@
 # PLAN — FactoryGuard AI
 
 Status legend: [ ] pending · [~] in progress · [x] done · [!] blocked/needs external environment
-Last update: 2026-07-19 (Phase 6)
+Last update: 2026-07-19 (Phase 7)
 
 ## Phase 0 — Discovery and design
 - [x] Environment inspected (OS, ARM64, Python, GPU, CUDA, Docker+GPU, git, no az) → `docs/environment-assessment.md`
@@ -12,7 +12,7 @@ Last update: 2026-07-19 (Phase 6)
 - [x] Git init, repo-local identity
 - [x] `.gitignore`, `.dockerignore`, `.editorconfig`, `.pre-commit-config.yaml`
 - [x] Repo skeleton directories
-- [~] Architecture docs (`docs/architecture/*.md`) — local done; azure/security/data-flow/topology in Phase 7
+- [x] Architecture docs (`docs/architecture/*.md`) — local (Phase 1) + azure/security/data-flow/topology (Phase 7)
 - [ ] Threat model (`docs/security/threat-model.md`) — Phase 8
 - [x] Phase 0 commit (789ff51)
 
@@ -92,13 +92,14 @@ Last update: 2026-07-19 (Phase 6)
 - [x] GB10 benchmark (`pipelines/benchmark/run_benchmark.py` → `docs/performance/gb10-benchmark.md`): GPU matmul ×25.4 vs CPU, DINOv2 1566 img/s, TS embed 317k units/s, service P50/P95/P99 = 43/56/57 ms — resolves OI-1 (GPU path solid) and OI-2 (ONNX stays optional)
 - [x] First real compose boot: postgres/minio/mlflow/prometheus/grafana healthy on loopback (found+fixed: `cap_drop: ALL` broke the postgres root→user drop — now runs as the postgres user, hardening intact, D-035); api container image build deferred (OI-9)
 
-## Phase 7 — Azure (design + code, NOT executed here)
-- [ ] Bicep: RG, VNet/subnets, private DNS+endpoints, Key Vault, ADLS/Blob, ACR, Log Analytics, App Insights, AML workspace+compute+registry, managed identities, RBAC, PostgreSQL, Event Hubs (flag), Container Apps env, budgets, diagnostics, policy hooks
-- [ ] AML job/environment/endpoint YAML; batch endpoint
-- [ ] Foundry integration doc; optional Fable 5 summarizer wiring
-- [ ] Architecture docs + Mermaid diagrams complete; port/protocol + identity matrices
-- [ ] Deployment/rollback runbooks; teardown scripts
-- [!] Actual deployment — requires subscription, credentials, cost approval
+## Phase 7 — Azure (design + code, NOT executed) ✅ authored (2026-07-19)
+- [x] Bicep landing zone (`infrastructure/bicep/`): subscription-scope main (RG, budget+alerts, CanNotDelete lock) + 15 modules — VNet/NSGs, 9 private DNS zones, reusable private endpoint, LAW+App Insights (Entra-only ingestion), 3 UAMIs + GitHub OIDC federation, RBAC (resource-scoped, mirrors the identity matrix), Key Vault, ADLS+blob storage (shared keys off, D-038), Premium ACR (export off), PostgreSQL 16 Entra-only (D-039), AML workspace (managed network, zero FQDN rules D-040, identity datastores) + CPU/GPU clusters + model registry, flag-gated Event Hubs, Container Apps env + api/dashboard/worker, policy guardrails; dev/prod `.bicepparam` — **`bicep build` 0 errors / 0 warnings** (CLI 0.45.15)
+- [x] AML assets (`deployment/azureml/`): train/serve environments (prebuilt ACR images), identity-based datastore, train-multimodal command job (same CLI as local), managed online endpoint (`aad_token`, private) + blue deployment, batch endpoint + JSONL deployment, `scoring/score{,_batch}.py` thin adapters over the tested `PredictionService` (+5 unit tests)
+- [x] Foundry integration doc + `FoundrySummarizer` (Claude Fable 5, structured-evidence-only, validated, template fallback incl. refusals — D-041; SDK deliberately unpinned, OI-11; +5 unit tests)
+- [x] Architecture docs + Mermaid: `azure-architecture.md`, `network-topology.md` (port/protocol matrix, 14 rows + documented exceptions), `data-flow.md` (training/inference/feedback + trust boundaries), `security-architecture.md` (identity→resource matrix)
+- [x] Runbooks + scripts: `azure-deployment-runbook.md` (auth→grants→params→what-if→deploy→images→AML→canary→rollback→teardown→cost), `azure-devops-equivalents.md` (ADR-0014 promise), `scripts/azure/{deploy.sh,teardown.sh}` (placeholder/prod guards)
+- [x] Terraform partial equivalent (`infrastructure/terraform/`): core landing zone + module map README — `terraform validate` clean (1.10.5, azurerm 4.x)
+- [!] Actual deployment — requires subscription, credentials, cost approval; exact validation boundary recorded as OI-10
 
 ## Phase 8 — Hardening + final
 - [ ] Security test suite (authz, oversized payloads, malformed images, corrupted artifacts, path traversal, secret-leak checks)
@@ -128,11 +129,11 @@ Last update: 2026-07-19 (Phase 6)
 | 15 | Scans + SBOM integrated | pending |
 | 16 | No secrets in repo | pending |
 | 17 | Secure-by-default prod config | pending |
-| 18 | Azure infra plannable from code | pending |
-| 19 | Private networking + managed identity documented | pending |
-| 20 | Rollout + rollback procedure | partial (registry promotion/rollback + runbook done; cloud canary is Phase 7 design) |
+| 18 | Azure infra plannable from code | done (Bicep lint-verified 0 warnings + param files + deploy.sh what-if flow; first real what-if pending subscription, OI-10) |
+| 19 | Private networking + managed identity documented | done (network-topology + security-architecture docs; implemented in network/private-dns/private-endpoint/identity/rbac modules) |
+| 20 | Rollout + rollback procedure | done as design (registry promotion/rollback + runbook §7-8 canary with gate checks; cloud execution pending) |
 | 21 | Monitoring + drift reports | done (Prometheus/Grafana loop live; drift reports with injected-shift validation) |
 | 22 | Threat model + RAI docs | pending |
 | 23 | No unexplained TODOs in critical paths | pending |
-| 24 | Unexecuted cloud ops identified | pending |
+| 24 | Unexecuted cloud ops identified | done (OI-10 records the exact local-validation boundary; every Azure doc carries the unexecuted banner) |
 | 25 | Final report with gaps | pending |

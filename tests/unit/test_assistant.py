@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 from factoryguard.assistants import (
+    FoundrySummarizer,
     SlmSummarizer,
     TemplateSummarizer,
     build_summarizer,
@@ -102,3 +103,56 @@ def test_build_summarizer_defaults_to_template() -> None:
     assert isinstance(build_summarizer("template"), TemplateSummarizer)
     assert isinstance(build_summarizer("does-not-exist"), TemplateSummarizer)
     assert isinstance(build_summarizer("slm", "/m.gguf"), SlmSummarizer)
+
+
+def test_foundry_falls_back_to_template_when_sdk_absent() -> None:
+    # The anthropic SDK is not in the pinned lock (ADR-0015: optional) —
+    # the import inside _generate fails and the template serves instead.
+    out = FoundrySummarizer().summarize(_response())
+    assert out.generator == "template"
+    assert out.text
+
+
+def test_foundry_invalid_output_falls_back(monkeypatch) -> None:
+    fs = FoundrySummarizer()
+    monkeypatch.setattr(fs, "_generate", lambda r: "Please restart_machine on UNIT-9999999.")
+    out = fs.summarize(_response())
+    assert out.generator == "template"
+
+
+def test_foundry_valid_output_served(monkeypatch) -> None:
+    fs = FoundrySummarizer()
+    good = (
+        "Estimated defect probability 72.0%. Top-ranked cause hypothesis: tool "
+        "T-PL01-L01-01-1 (statistical association, not causal proof)."
+    )
+    monkeypatch.setattr(fs, "_generate", lambda r: good)
+    out = fs.summarize(_response())
+    assert out.generator == "foundry"
+    assert out.text == good
+
+
+def test_foundry_evidence_contains_no_free_text_fields() -> None:
+    # Structured-evidence-only guarantee (D-033): the payload is assembled from
+    # enumerated response fields; entity ids and actions, never caller text.
+    import json
+
+    payload = json.loads(FoundrySummarizer()._evidence(_response()))
+    assert set(payload) == {
+        "serving_mode",
+        "is_probability",
+        "defect_probability",
+        "risk_score",
+        "abstained",
+        "abstention_reasons",
+        "data_quality",
+        "missing_modalities",
+        "root_causes",
+        "recommended_actions",
+        "similar_incident_count",
+    }
+    assert payload["root_causes"][0]["entity_id"] == "T-PL01-L01-01-1"
+
+
+def test_build_summarizer_foundry() -> None:
+    assert isinstance(build_summarizer("foundry"), FoundrySummarizer)
